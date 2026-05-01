@@ -53,7 +53,7 @@ async function safeFetch<T>(label: string, fn: () => Promise<T>, fallback: T): P
  * provided makes the precise on-chain version reliable, but we only
  * need that for vote-eligibility / state-transition edge cases.
  */
-export function inferProposalState(p: {
+function inferProposalState(p: {
   executedAt?: unknown
   vetoTransactionHash?: unknown
   cancelTransactionHash?: unknown
@@ -88,7 +88,7 @@ export function inferProposalState(p: {
 }
 
 /** Map onchain ProposalState → the 5-state palette the UI cards.  */
-export function mapProposalState(state: ProposalState): ProposalStatus {
+function mapProposalState(state: ProposalState): ProposalStatus {
   switch (state) {
     case ProposalState.Active:
       return 'active'
@@ -122,9 +122,6 @@ export type ProposalSummary = {
   endsLabel: string
   requested: { eth: number; usdc: number }
 }
-
-/** @deprecated alias kept for back-compat with PR #10 import sites */
-export type DashboardProposal = ProposalSummary
 
 export type DashboardActivityItem = {
   type: 'bid' | 'prop'
@@ -335,7 +332,7 @@ function trimDec(value: string, max: number): string {
   return `${intPart}.${decPart.slice(0, max).replace(/0+$/, '') || '0'}`
 }
 
-export function formatProposal(p: Proposal): ProposalSummary {
+function formatProposal(p: Proposal): ProposalSummary {
   const status = mapProposalState(p.state)
   const created = Number(p.timeCreated) * 1000
   const date = new Date(created).toLocaleDateString(undefined, {

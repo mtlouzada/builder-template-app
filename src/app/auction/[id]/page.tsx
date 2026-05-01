@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { AuctionArt } from '@/components/dao/AuctionArt'
 import { BidForm } from '@/components/dao/BidForm'
 import { BidHistory } from '@/components/dao/BidHistory'
+import { SettleAuctionAction } from '@/components/dao/SettleAuctionAction'
 import { TimeAlert } from '@/components/dao/TimeAlert'
 import { VotingPowerExplainer } from '@/components/dao/VotingPowerExplainer'
 import { daoConfig, fallbackArtPalette } from '@/lib/dao.config'
@@ -100,17 +101,20 @@ export default async function AuctionPage({ params }: { params: Params }) {
               <VotingPowerExplainer scenario="eligible" />
             </>
           ) : (
-            <div className="rounded-md border border-dashed border-border bg-surface-2 px-4 py-5 text-sm text-muted-fg">
-              This auction has ended.{' '}
-              {data.nextTokenId != null && (
-                <Link
-                  href={`/auction/${data.nextTokenId}`}
-                  className="font-semibold text-accent-strong hover:underline"
-                >
-                  See next auction →
-                </Link>
-              )}
-            </div>
+            <>
+              <div className="rounded-md border border-dashed border-border bg-surface-2 px-4 py-5 text-sm text-muted-fg">
+                This auction has ended.{' '}
+                {data.nextTokenId != null && (
+                  <Link
+                    href={`/auction/${data.nextTokenId}`}
+                    className="font-semibold text-accent-strong hover:underline"
+                  >
+                    See next auction →
+                  </Link>
+                )}
+              </div>
+              <SettleAuctionAction tokenId={data.tokenId} />
+            </>
           )}
         </div>
       </div>
