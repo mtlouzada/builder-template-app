@@ -17,4 +17,5 @@ export const config = getDefaultConfig({
   transports: {
     [daoChain.id]: transports[daoChain.id],
   },
+  ssr: true,
 })

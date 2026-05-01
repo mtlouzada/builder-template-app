@@ -1,7 +1,4 @@
-import { createVanillaExtractPlugin } from '@vanilla-extract/next-plugin'
 import type { NextConfig } from 'next'
-
-const withVanillaExtract = createVanillaExtractPlugin()
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -12,36 +9,42 @@ const nextConfig: NextConfig = {
     '@buildeross/sdk',
     '@buildeross/types',
     '@buildeross/utils',
-    '@buildeross/zord',
-    '@buildeross/ui',
     '@buildeross/stores',
-    '@buildeross/auction-ui',
-    '@buildeross/proposal-ui',
-    '@buildeross/dao-ui',
-    '@buildeross/create-proposal-ui',
+    '@buildeross/ui',
     '@rainbow-me/rainbowkit',
   ],
   experimental: {
     optimizePackageImports: [
       '@rainbow-me/rainbowkit',
-      '@buildeross/zord',
       '@buildeross/hooks',
       '@buildeross/ui',
       '@buildeross/sdk',
+      'lucide-react',
     ],
   },
-  webpack(config, { dev }) {
+  async redirects() {
+    return [
+      { source: '/token/:tokenId', destination: '/auction/:tokenId', permanent: true },
+      {
+        source: '/proposal/:proposalId',
+        destination: '/proposals/:proposalId',
+        permanent: true,
+      },
+      { source: '/contracts', destination: '/about', permanent: true },
+    ]
+  },
+  webpack(config) {
     config.resolve.fallback = { fs: false, net: false, tls: false }
-
+    // Optional React Native peer pulled in transitively by @metamask/sdk —
+    // not needed in a web build, alias it away.
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      '@react-native-async-storage/async-storage': false,
+    }
     config.externals = config.externals || []
     config.externals.push('pino-pretty')
-
-    return {
-      ...config,
-      // Hot-fix for $RefreshReg issues: https://github.com/vanilla-extract-css/vanilla-extract/issues/679#issuecomment-1402839249
-      mode: dev ? 'production' : config.mode,
-    }
+    return config
   },
 }
 
-export default withVanillaExtract(nextConfig)
+export default nextConfig

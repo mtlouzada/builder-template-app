@@ -1,100 +1,81 @@
-import type { NextApiHandler, NextApiRequest, NextApiResponse } from 'next'
-import { getRedisConnection } from 'src/services/redisConnection'
+import { NextResponse } from 'next/server'
+
+import { getRedisConnection } from '@/services/redisConnection'
 
 interface RateLimitOptions {
-  /**
-   * Maximum number of requests allowed within the time window
-   * @default 30
-   */
+  /** Maximum requests within the time window. Default 30. */
   maxRequests?: number
-
-  /**
-   * Time window in seconds
-   * @default 300 (5 minutes)
-   */
+  /** Window in seconds. Default 300 (5 minutes). */
   windowSeconds?: number
-
-  /**
-   * Custom key prefix for this specific endpoint
-   * @default "api"
-   */
+  /** Key prefix for this endpoint. Default "api". */
   keyPrefix?: string
 }
 
-/**
- * Creates a rate limiting wrapper for API endpoints
- * Uses Redis to track request counts per IP address
- */
+type Handler = (req: Request) => Promise<Response> | Response
+
 export const withRateLimit = ({
   maxRequests = 30,
-  windowSeconds = 300, // 5 minutes
+  windowSeconds = 300,
   keyPrefix = 'api',
 }: RateLimitOptions = {}) => {
-  return <T extends NextApiHandler>(handler: T): T => {
-    return (async (req: NextApiRequest, res: NextApiResponse) => {
+  return (handler: Handler): Handler => {
+    return async (req) => {
       try {
-        const redisConnection = getRedisConnection()
-
-        // Skip rate limiting if Redis is not available
-        if (!redisConnection) {
+        const redis = getRedisConnection()
+        if (!redis) {
           console.warn('Rate limiting skipped: Redis connection not available')
-          return handler(req, res)
+          return handler(req)
         }
 
-        // Derive client IP safely
-        const xff = req.headers['x-forwarded-for'] ?? req.headers['x-real-ip']
-        const rawIp = Array.isArray(xff)
-          ? xff[0]
-          : typeof xff === 'string'
-            ? xff.split(',')[0]?.trim()
-            : (req.socket.remoteAddress ?? 'unknown')
-        const clientIp = rawIp || 'unknown'
+        const xff =
+          req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? ''
+        const clientIp = xff.split(',')[0]?.trim() || 'unknown'
+        const route = new URL(req.url).pathname
+        const key = `${keyPrefix}:ratelimit:${route}:${clientIp}`
 
-        // Create rate limit key scoped by route (path only) + IP
-        const route = req.url?.split('?')[0] ?? ''
-        const rateLimitKey = `${keyPrefix}:ratelimit:${route}:${clientIp}`
-
-        // Increment request count
-        const requests = await redisConnection.incr(rateLimitKey)
-
-        // Ensure key has expiry (handles first-request races)
+        const requests = await redis.incr(key)
         if (requests === 1) {
-          await redisConnection.expire(rateLimitKey, windowSeconds)
+          await redis.expire(key, windowSeconds)
         } else {
-          const ttl = await redisConnection.ttl(rateLimitKey)
-          if (ttl === -1) {
-            await redisConnection.expire(rateLimitKey, windowSeconds)
-          }
+          const ttl = await redis.ttl(key)
+          if (ttl === -1) await redis.expire(key, windowSeconds)
         }
 
-        // Check if rate limit exceeded
         if (requests > maxRequests) {
-          res.setHeader('Retry-After', windowSeconds.toString())
-          res.status(429).json({
-            error: 'Rate limit exceeded',
-            retryAfter: windowSeconds,
-            limit: maxRequests,
-            windowSeconds,
-          })
-          return
+          return NextResponse.json(
+            {
+              error: 'Rate limit exceeded',
+              retryAfter: windowSeconds,
+              limit: maxRequests,
+              windowSeconds,
+            },
+            {
+              status: 429,
+              headers: { 'Retry-After': String(windowSeconds) },
+            }
+          )
         }
 
-        // Add rate limit headers
-        res.setHeader('X-RateLimit-Limit', maxRequests.toString())
-        res.setHeader(
+        const res = await handler(req)
+        const headers = new Headers(res.headers)
+        headers.set('X-RateLimit-Limit', String(maxRequests))
+        headers.set(
           'X-RateLimit-Remaining',
-          Math.max(0, maxRequests - requests).toString()
+          String(Math.max(0, maxRequests - requests))
         )
-        const resetAt = Math.floor(Date.now() / 1000) + windowSeconds
-        res.setHeader('X-RateLimit-Reset', resetAt.toString())
-
-        // Continue to actual handler
-        return handler(req, res)
+        headers.set(
+          'X-RateLimit-Reset',
+          String(Math.floor(Date.now() / 1000) + windowSeconds)
+        )
+        return new Response(res.body, {
+          status: res.status,
+          statusText: res.statusText,
+          headers,
+        })
       } catch (error) {
         console.error('Rate limiting error:', error)
-        // On rate limiting errors, continue without blocking (fail open)
-        return handler(req, res)
+        return handler(req)
       }
-    }) as T
+    }
   }
 }
