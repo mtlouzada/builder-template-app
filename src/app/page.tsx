@@ -1,7 +1,7 @@
 import { ArrowUpRight, BadgeCheck, Diamond, Users } from 'lucide-react'
 import Link from 'next/link'
 
-import { DaoLogo } from '@/components/DaoLogo'
+import { DaoAvatar } from '@/components/DaoAvatar'
 import { ActivityFeed } from '@/components/dao/ActivityFeed'
 import { AuctionArt } from '@/components/dao/AuctionArt'
 import { BarChart } from '@/components/dao/BarChart'
@@ -46,7 +46,12 @@ export default async function Dashboard() {
       <section className="grid grid-cols-1 items-center gap-10 px-2 pb-6 pt-8 md:grid-cols-[1.2fr_1fr]">
         <div className="flex flex-col">
           <div className="mb-4 flex items-center gap-2.5 text-sm font-semibold text-muted-fg">
-            <DaoLogo style="stripes" color={daoConfig.theme.accent} size={24} />
+            <DaoAvatar
+              image={daoConfig.image}
+              alt={daoConfig.name}
+              fallbackColor={daoConfig.theme.accent}
+              size={24}
+            />
             <span>{daoConfig.name}</span>
             <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-accent-strong">
               {chainName}

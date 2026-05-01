@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
-import { DaoLogo } from '@/components/DaoLogo'
+import { DaoAvatar } from '@/components/DaoAvatar'
 import { daoConfig } from '@/lib/dao.config'
 import { AUCTION } from '@/lib/mockData'
 import { cn } from '@/lib/utils'
@@ -52,9 +52,10 @@ export function Header() {
     <header className="sticky top-0 z-30 border-b border-border bg-bg/80 backdrop-blur-md backdrop-saturate-150">
       <div className="mx-auto flex max-w-[1180px] items-center gap-6 px-6 py-3">
         <Link href="/" className="flex items-center gap-2.5 text-base font-bold">
-          <DaoLogo
-            style="stripes"
-            color={daoConfig.theme.accent}
+          <DaoAvatar
+            image={daoConfig.image}
+            alt={daoConfig.name}
+            fallbackColor={daoConfig.theme.accent}
             size={28}
           />
           <span className="font-display tracking-tight">{daoConfig.name}</span>

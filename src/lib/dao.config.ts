@@ -1,6 +1,10 @@
 import type { AddressType, CHAIN_ID } from '@buildeross/types'
 
 import { DAO_CONFIG as ONCHAIN_CONFIG } from '@/config/dao'
+// `dao.theme.json` is the visible identity of this fork — tagline, accent,
+// radius, display font. Edit by hand for one-off tweaks, or use
+// `pnpm switch-dao <preset>` for the full DAO-swap workflow.
+import THEME_OVERRIDES from '@/config/dao.theme.json'
 
 /**
  * The single config surface a forking DAO touches.
@@ -63,12 +67,21 @@ export type DaoConfig = {
   socials: DaoSocials
 }
 
+const T = THEME_OVERRIDES as Partial<{
+  tagline: string
+  accent: string
+  radius: number
+  font: string
+  displayFont: string
+  defaultMode: DaoTheme['defaultMode']
+}>
+
 export const daoConfig: DaoConfig = {
   // ── Identity ──────────────────────────────────────
   // `name` and `image` come from the on-chain config. Override here if you want
   // to display something different than what's stored on-chain.
   name: ONCHAIN_CONFIG.name,
-  tagline: 'Powering Onchain Communities.',
+  tagline: T.tagline ?? 'Powering Onchain Communities.',
   image: ONCHAIN_CONFIG.image,
 
   // ── Onchain ──────────────────────────────────────
@@ -83,14 +96,14 @@ export const daoConfig: DaoConfig = {
   },
 
   // ── Theme ────────────────────────────────────────
-  // The Tweaks panel (dev only — gear icon, bottom-right) lets you preview these
-  // live before committing. The 4 keys here drive the entire visual identity.
+  // Driven by src/config/dao.theme.json. The Tweaks panel (dev only — gear
+  // icon, bottom-right) lets you preview overrides live before committing.
   theme: {
-    accent: '#2563eb',
-    radius: 12,
-    font: 'Geist',
-    displayFont: 'Geist',
-    defaultMode: 'system',
+    accent: T.accent ?? '#2563eb',
+    radius: T.radius ?? 12,
+    font: T.font ?? 'Geist',
+    displayFont: T.displayFont ?? 'Geist',
+    defaultMode: T.defaultMode ?? 'system',
   },
 
   // ── Optional features ────────────────────────────

@@ -9,7 +9,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "fetch-dao": "tsx scripts/fetchDaoAddresses.ts"
+    "fetch-dao": "tsx scripts/fetchDaoAddresses.ts",
+    "switch-dao": "tsx scripts/switchDao.ts"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^2.0.1",

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-import { DaoLogo } from '@/components/DaoLogo'
+import { DaoAvatar } from '@/components/DaoAvatar'
 import { AddressChip } from '@/components/dao/AddressChip'
 import { daoConfig } from '@/lib/dao.config'
 import { CONTRACTS, PRESETS } from '@/lib/mockData'
@@ -24,7 +24,12 @@ export default function AboutPage() {
     <div className="flex flex-col gap-6">
       <section className="rounded-xl border border-border bg-surface px-6 py-[22px]">
         <div className="mb-4 flex items-center gap-4">
-          <DaoLogo style="stripes" color={daoConfig.theme.accent} size={48} />
+          <DaoAvatar
+            image={daoConfig.image}
+            alt={daoConfig.name}
+            fallbackColor={daoConfig.theme.accent}
+            size={48}
+          />
           <div>
             <h1 className="font-display text-[28px] font-bold leading-tight tracking-tight">
               {daoConfig.name}
