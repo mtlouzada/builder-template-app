@@ -580,6 +580,102 @@ export async function getProposalByNumber(
   }
 }
 
+// ── Members page ───────────────────────────────────────────
+
+export type MemberRow = {
+  ens: string | null
+  addr: string
+  addrShort: string
+  votes: number
+  pct: number
+  joined: string
+  active: boolean
+}
+
+export type MembersPageData = {
+  members: MemberRow[]
+  totalMembers: number
+  activeMembers: number
+}
+
+export async function getMembersPageData(): Promise<MembersPageData> {
+  const [ownersResp, recentProposalsResp] = await Promise.all([
+    safeFetch(
+      'membersPage.daoMembersList',
+      () =>
+        SubgraphSDK.connect(chainId).daoMembersList({
+          where: { dao: tokenAddressLc } as never,
+          // DaoTokenOwner_OrderBy.DaoTokenCount — enum not re-exported, use literal.
+          orderBy: 'daoTokenCount' as never,
+          orderDirection: OrderDirection.Desc,
+          first: 1000,
+        }),
+      { daotokenOwners: [] } as Awaited<
+        ReturnType<
+          ReturnType<typeof SubgraphSDK.connect>['daoMembersList']
+        >
+      >
+    ),
+    safeFetch(
+      'membersPage.recentProposals',
+      () =>
+        SubgraphSDK.connect(chainId).proposals({
+          where: { dao: tokenAddressLc } as never,
+          first: 5,
+        }) as Promise<{
+          proposals: Array<{ votes: Array<{ voter: string }> }>
+        }>,
+      { proposals: [] as Array<{ votes: Array<{ voter: string }> }> }
+    ),
+  ])
+
+  // Active-set: any address that voted in any of the last 5 proposals.
+  const activeSet = new Set<string>()
+  for (const p of recentProposalsResp.proposals) {
+    for (const v of p.votes ?? []) {
+      activeSet.add(String(v.voter).toLowerCase())
+    }
+  }
+
+  const owners = ownersResp.daotokenOwners
+  const totalTokens = owners.reduce(
+    (s, o) => s + (o.daoTokenCount ?? 0),
+    0
+  )
+
+  const members: MemberRow[] = owners.map((o) => {
+    const addr = String(o.owner)
+    const tokens = o.daoTokenCount ?? 0
+    // Earliest minted token = joined date.
+    const earliestMinted = (o.daoTokens ?? []).reduce<number>((min, t) => {
+      const ts = Number(t.mintedAt ?? 0)
+      return min === 0 || ts < min ? ts : min
+    }, 0)
+    return {
+      ens: null, // ENS lives in a follow-up (viem batch resolver server-side)
+      addr,
+      addrShort: short(addr),
+      votes: tokens,
+      pct: totalTokens > 0 ? +((tokens / totalTokens) * 100).toFixed(2) : 0,
+      joined:
+        earliestMinted > 0
+          ? new Date(earliestMinted * 1000).toLocaleDateString(undefined, {
+              month: 'short',
+              day: '2-digit',
+              year: 'numeric',
+            })
+          : '—',
+      active: activeSet.has(addr.toLowerCase()),
+    }
+  })
+
+  return {
+    members,
+    totalMembers: members.length,
+    activeMembers: members.filter((m) => m.active).length,
+  }
+}
+
 // ── Auction page ───────────────────────────────────────────
 
 export type AuctionPageBid = {

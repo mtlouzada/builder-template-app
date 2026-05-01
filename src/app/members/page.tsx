@@ -1,19 +1,28 @@
 import type { Metadata } from 'next'
 
 import { MembersTable } from '@/components/dao/MembersTable'
-import { MEMBERS, PRESETS } from '@/lib/mockData'
+import { getMembersPageData } from '@/lib/dao-data'
 
 export const metadata: Metadata = {
   title: 'Members',
 }
 
-export default function MembersPage() {
-  const preset = PRESETS.builder
+export const revalidate = 120
+
+export default async function MembersPage() {
+  const data = await getMembersPageData()
   return (
     <MembersTable
-      members={MEMBERS}
-      totalMembers={preset.members}
-      activeMembers={preset.activeMembers}
+      members={data.members.map((m) => ({
+        ens: m.ens,
+        addr: m.addrShort,
+        votes: m.votes,
+        pct: m.pct,
+        joined: m.joined,
+        active: m.active,
+      }))}
+      totalMembers={data.totalMembers}
+      activeMembers={data.activeMembers}
     />
   )
 }
