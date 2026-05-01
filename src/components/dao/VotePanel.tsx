@@ -1,18 +1,22 @@
 'use client'
 
-import { governorAbi } from '@buildeross/sdk/contract'
+import { governorAbi, tokenAbi } from '@buildeross/sdk/contract'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
   useAccount,
   useChainId,
+  useReadContracts,
   useSwitchChain,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from 'wagmi'
 
-import { VotingPowerExplainer } from '@/components/dao/VotingPowerExplainer'
+import {
+  VotingPowerExplainer,
+  type VotingPowerScenario,
+} from '@/components/dao/VotingPowerExplainer'
 import { Button } from '@/components/ui/button'
 import { daoConfig } from '@/lib/dao.config'
 import { cn } from '@/lib/utils'
@@ -27,10 +31,8 @@ const SUPPORT: Record<Choice, number> = {
 
 type Props = {
   proposalIdHash: `0x${string}`
-  /** Wallet's voting power at the proposal's snapshot block. Resolved from
-   * the connected wallet in a follow-up; for now, callers pass a static
-   * estimate or 0. The form gates on this. */
-  votingPower?: number
+  /** Unix timestamp when voting opens — passed to governor.getVotes(account, timestamp). */
+  voteStart: number
   initialChoice?: Choice | null
   /** Whether voting is open (proposal is in active state). */
   active?: boolean
@@ -38,7 +40,7 @@ type Props = {
 
 export function VotePanel({
   proposalIdHash,
-  votingPower = 0,
+  voteStart,
   initialChoice = null,
   active = true,
 }: Props) {
@@ -51,6 +53,48 @@ export function VotePanel({
   const { switchChain, isPending: isSwitching } = useSwitchChain()
 
   const onWrongChain = isConnected && connectedChainId !== daoConfig.chainId
+
+  // Resolve real voting power: getVotes at the proposal's snapshot timestamp +
+  // current token balance (to distinguish "delegated away" from "no tokens").
+  const nowSec = Math.floor(Date.now() / 1000)
+  const snapshotInPast = voteStart > 0 && voteStart <= nowSec
+
+  const { data: powerReads } = useReadContracts({
+    contracts: address && snapshotInPast
+      ? [
+          {
+            address: daoConfig.addresses.governor as `0x${string}`,
+            abi: governorAbi,
+            functionName: 'getVotes' as const,
+            args: [address, BigInt(voteStart)] as const,
+            chainId: daoConfig.chainId,
+          },
+          {
+            address: daoConfig.addresses.token as `0x${string}`,
+            abi: tokenAbi,
+            functionName: 'balanceOf' as const,
+            args: [address] as const,
+            chainId: daoConfig.chainId,
+          },
+        ]
+      : [],
+    query: { enabled: !!address && snapshotInPast },
+  })
+
+  const votingPower =
+    powerReads?.[0]?.status === 'success'
+      ? Number(powerReads[0].result as bigint)
+      : 0
+  const tokenBalance =
+    powerReads?.[1]?.status === 'success'
+      ? Number(powerReads[1].result as bigint)
+      : 0
+
+  let scenario: VotingPowerScenario = 'none'
+  if (!isConnected) scenario = 'none'
+  else if (votingPower > 0) scenario = 'eligible'
+  else if (tokenBalance > 0) scenario = 'delegated'
+  else scenario = 'none'
 
   const {
     writeContract,
@@ -105,15 +149,7 @@ export function VotePanel({
   return (
     <aside className="sticky top-20 flex flex-col gap-3.5 rounded-xl border border-border bg-surface px-6 py-[22px]">
       <h3 className="text-base font-bold">Cast your vote</h3>
-      <VotingPowerExplainer
-        scenario={
-          !isConnected
-            ? 'none'
-            : votingPower > 0
-              ? 'eligible'
-              : 'none'
-        }
-      />
+      <VotingPowerExplainer scenario={scenario} votingPower={votingPower} />
 
       <div className="grid grid-cols-3 gap-2">
         <ChoiceBtn
@@ -166,7 +202,13 @@ export function VotePanel({
       ) : (
         <Button
           onClick={submit}
-          disabled={!active || !choice || phase === 'sign' || phase === 'mine'}
+          disabled={
+            !active ||
+            !choice ||
+            votingPower === 0 ||
+            phase === 'sign' ||
+            phase === 'mine'
+          }
           className="w-full"
         >
           {phase === 'sign' && (
@@ -198,7 +240,10 @@ export function VotePanel({
           {votingPower > 0 && (
             <>
               {' '}
-              · <strong className="font-semibold">{votingPower} votes</strong>
+              ·{' '}
+              <strong className="font-semibold">
+                {votingPower} {votingPower === 1 ? 'vote' : 'votes'}
+              </strong>
             </>
           )}
         </div>
