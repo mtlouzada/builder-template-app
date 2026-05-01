@@ -2,19 +2,38 @@ import type { AddressType, CHAIN_ID } from '@buildeross/types'
 
 import { DAO_CONFIG as ONCHAIN_CONFIG } from '@/config/dao'
 
+/**
+ * The single config surface a forking DAO touches.
+ *
+ * Identity / chainId / addresses are auto-resolved from the on-chain DAO
+ * (via `pnpm fetch-dao` → `src/config/dao.ts`). You override them here only
+ * if you want to display something different than what's on-chain.
+ *
+ * Theme / features / socials are hand-edited per fork.
+ */
 export type DaoTheme = {
+  /** Primary brand color — drives accent surfaces (CTAs, active nav, vote bars). */
   accent: string
+  /** Base radius in px. Cards/inputs/buttons derive from this. 0 = sharp, 20 = pillowy. */
   radius: number
+  /** Body font family name — must be loaded in app/layout.tsx. */
   font: string
+  /** Display font for hero headings. Defaults to body font. */
   displayFont: string
+  /** Initial color mode for visitors — `system` respects OS preference. */
   defaultMode: 'light' | 'dark' | 'system'
 }
 
 export type DaoFeatures = {
+  /** Show the auction-history chart tab on /auction. */
   auctionChart: boolean
+  /** Show the analytics charts on /treasury. */
   treasuryAnalytics: boolean
+  /** Expose /members in the nav. */
   membersDirectory: boolean
+  /** 140-char on-chain comment field on the bid form. */
   bidComments: boolean
+  /** Surface "voting closes in / auction ending" banners. */
   timeBasedAlerts: boolean
 }
 
@@ -45,9 +64,15 @@ export type DaoConfig = {
 }
 
 export const daoConfig: DaoConfig = {
+  // ── Identity ──────────────────────────────────────
+  // `name` and `image` come from the on-chain config. Override here if you want
+  // to display something different than what's stored on-chain.
   name: ONCHAIN_CONFIG.name,
   tagline: 'Powering Onchain Communities.',
   image: ONCHAIN_CONFIG.image,
+
+  // ── Onchain ──────────────────────────────────────
+  // Auto-resolved by `pnpm fetch-dao`. Don't edit manually.
   chainId: ONCHAIN_CONFIG.chain.id,
   addresses: {
     token: ONCHAIN_CONFIG.addresses.token,
@@ -56,6 +81,10 @@ export const daoConfig: DaoConfig = {
     treasury: ONCHAIN_CONFIG.addresses.treasury,
     metadata: ONCHAIN_CONFIG.addresses.metadata,
   },
+
+  // ── Theme ────────────────────────────────────────
+  // The Tweaks panel (dev only — gear icon, bottom-right) lets you preview these
+  // live before committing. The 4 keys here drive the entire visual identity.
   theme: {
     accent: '#2563eb',
     radius: 12,
@@ -63,6 +92,10 @@ export const daoConfig: DaoConfig = {
     displayFont: 'Geist',
     defaultMode: 'system',
   },
+
+  // ── Optional features ────────────────────────────
+  // Flip off anything you don't need. The template's components respect these
+  // flags (e.g. BidForm hides its comment field when bidComments === false).
   features: {
     auctionChart: true,
     treasuryAnalytics: true,
@@ -70,5 +103,14 @@ export const daoConfig: DaoConfig = {
     bidComments: true,
     timeBasedAlerts: true,
   },
-  socials: {},
+
+  // ── Socials ──────────────────────────────────────
+  // Surfaces in the footer (and OG metadata, eventually).
+  socials: {
+    // twitter: '@yourdao',
+    // farcaster: 'yourdao',
+    // discord: 'https://discord.gg/...',
+    // github: 'https://github.com/yourdao',
+    // website: 'https://yourdao.com',
+  },
 }
