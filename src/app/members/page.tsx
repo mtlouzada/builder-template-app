@@ -1,16 +1,19 @@
-import { PageStub } from '@/components/PageStub'
+import type { Metadata } from 'next'
+
+import { MembersTable } from '@/components/dao/MembersTable'
+import { MEMBERS, PRESETS } from '@/lib/mockData'
+
+export const metadata: Metadata = {
+  title: 'Members',
+}
 
 export default function MembersPage() {
+  const preset = PRESETS.builder
   return (
-    <PageStub
-      title="Members"
-      pr="PR #6"
-      blocks={[
-        'PageHeader + Search',
-        'MembersTable: avatar/ENS, address, votes, vote%, joined, ActiveBadge',
-        'ExportCSV',
-        'Pagination',
-      ]}
+    <MembersTable
+      members={MEMBERS}
+      totalMembers={preset.members}
+      activeMembers={preset.activeMembers}
     />
   )
 }
