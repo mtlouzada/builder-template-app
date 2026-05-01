@@ -38,6 +38,47 @@ async function safeFetch<T>(label: string, fn: () => Promise<T>, fallback: T): P
   }
 }
 
+/**
+ * Heuristic state from the subgraph fragment alone — no on-chain reads.
+ * Used to avoid governor.state() per proposal which rate-limits the
+ * default public RPC at scale. Public RPC = good enough; Alchemy if
+ * provided makes the precise on-chain version reliable, but we only
+ * need that for vote-eligibility / state-transition edge cases.
+ */
+export function inferProposalState(p: {
+  executedAt?: unknown
+  vetoTransactionHash?: unknown
+  cancelTransactionHash?: unknown
+  expiresAt?: unknown
+  voteEnd?: unknown
+  forVotes: number
+  againstVotes: number
+  quorumVotes: unknown
+  timeCreated: unknown
+}): ProposalState {
+  if (p.executedAt) return ProposalState.Executed
+  if (p.vetoTransactionHash) return ProposalState.Vetoed
+  if (p.cancelTransactionHash) return ProposalState.Canceled
+  const now = Math.floor(Date.now() / 1000)
+  const expires = p.expiresAt ? Number(p.expiresAt) : null
+  if (expires && now > expires) return ProposalState.Expired
+  // voteEnd is a block number, not a timestamp — we can't compare directly.
+  // Use timeCreated + a 7-day fallback heuristic to decide active vs pending.
+  const created = p.timeCreated ? Number(p.timeCreated) : 0
+  const ageDays = (now - created) / (60 * 60 * 24)
+  const totalCast = p.forVotes + p.againstVotes
+  const quorum = Number(p.quorumVotes ?? 0)
+  // If voting is over (more than 7 days old by Builder default) and we have
+  // votes, decide succeeded vs defeated; else mark pending.
+  if (ageDays > 7) {
+    if (p.forVotes > p.againstVotes && p.forVotes >= quorum)
+      return ProposalState.Succeeded
+    if (totalCast > 0) return ProposalState.Defeated
+    return ProposalState.Defeated
+  }
+  return ProposalState.Active
+}
+
 /** Map onchain ProposalState → the 5-state palette the UI cards.  */
 export function mapProposalState(state: ProposalState): ProposalStatus {
   switch (state) {
@@ -285,6 +326,117 @@ export async function getAllProposals(limit = 50): Promise<ProposalSummary[]> {
     { proposals: [] as Proposal[] }
   )
   return resp.proposals.map((p) => formatProposal(p))
+}
+
+// ── Proposal detail page ───────────────────────────────────
+
+export type ProposalTransaction = {
+  target: string
+  targetShort: string
+  valueWei: bigint
+  valueEth: string
+  calldata: string
+  calldataPreview: string
+}
+
+export type ProposalDetail = {
+  summary: ProposalSummary
+  description: string
+  proposerFull: string
+  snapshotBlockNumber: number
+  voteStart: number
+  voteEnd: number
+  transactions: ProposalTransaction[]
+  voteCount: number
+}
+
+export async function getProposalByNumber(
+  proposalNumber: number
+): Promise<ProposalDetail | null> {
+  const resp = await safeFetch(
+    'proposalDetail.fetchByNumber',
+    () =>
+      SubgraphSDK.connect(chainId).proposals({
+        where: {
+          dao: tokenAddressLc,
+          proposalNumber: proposalNumber,
+        } as never,
+        first: 1,
+      }),
+    { proposals: [] as Array<unknown> } as never
+  )
+
+  type Fragment = {
+    proposalNumber: number
+    proposalId: unknown
+    title?: string | null
+    description?: string | null
+    proposer: string
+    timeCreated: unknown
+    forVotes: number
+    againstVotes: number
+    abstainVotes: number
+    quorumVotes: unknown
+    snapshotBlockNumber: unknown
+    voteStart: unknown
+    voteEnd: unknown
+    expiresAt?: unknown
+    executedAt?: unknown
+    vetoTransactionHash?: unknown
+    cancelTransactionHash?: unknown
+    targets?: string[]
+    values?: string[]
+    calldatas?: string | null
+  }
+
+  const fragment = (resp as { proposals: Fragment[] }).proposals[0]
+  if (!fragment) return null
+
+  // Calldatas come back as a single concatenated string in the fragment;
+  // formatAndFetchState normally splits them. We replicate the split here:
+  // builder packs each call as 0x-prefixed hex, separated by ":".
+  const splitCalldatas = (raw: string | null | undefined): string[] => {
+    if (!raw) return []
+    return raw.split(':').filter(Boolean).map((c) => (c.startsWith('0x') ? c : `0x${c}`))
+  }
+  const calldatasArr = splitCalldatas(fragment.calldatas)
+  const targetsArr = fragment.targets ?? []
+  const valuesArr = fragment.values ?? []
+
+  // Build a Proposal-compatible shape using inferred state — no RPC call.
+  const inferredState = inferProposalState(fragment)
+  const proposalLike = {
+    ...fragment,
+    state: inferredState,
+    calldatas: calldatasArr,
+  } as unknown as Proposal
+
+  const transactions: ProposalTransaction[] = targetsArr.map((t, i) => {
+    const valueWei = BigInt(valuesArr[i] ?? '0')
+    const calldata = calldatasArr[i] ?? '0x'
+    return {
+      target: t,
+      targetShort: short(t),
+      valueWei,
+      valueEth: formatEther(valueWei),
+      calldata,
+      calldataPreview:
+        calldata && calldata.length > 14
+          ? `${calldata.slice(0, 10)}…`
+          : calldata,
+    }
+  })
+
+  return {
+    summary: formatProposal(proposalLike),
+    description: fragment.description ?? '',
+    proposerFull: fragment.proposer,
+    snapshotBlockNumber: Number(fragment.snapshotBlockNumber ?? 0),
+    voteStart: Number(fragment.voteStart ?? 0),
+    voteEnd: Number(fragment.voteEnd ?? 0),
+    transactions,
+    voteCount: 0, // votes count needs a separate query; surfaced in vote panel later
+  }
 }
 
 // ── Auction page ───────────────────────────────────────────

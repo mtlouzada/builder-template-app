@@ -1,18 +1,27 @@
 import { ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 
 import { StatusBadge } from '@/components/dao/StatusBadge'
 import { VoteBar } from '@/components/dao/VoteBar'
 import { VotePanel } from '@/components/dao/VotePanel'
-import { PROPOSALS } from '@/lib/mockData'
+import { getProposalByNumber } from '@/lib/dao-data'
+
+export const revalidate = 30
 
 type Params = Promise<{ id: string }>
 
 export default async function ProposalDetailPage({ params }: { params: Params }) {
   const { id } = await params
-  const numericId = parseInt(id, 10)
-  const p = PROPOSALS.find((x) => x.id === numericId) ?? PROPOSALS[2] // active fallback
+  const proposalNumber = parseInt(id, 10)
+  if (!Number.isFinite(proposalNumber) || proposalNumber < 0) notFound()
+
+  const detail = await getProposalByNumber(proposalNumber)
+  if (!detail) notFound()
+
+  const { summary: p, description, transactions } = detail
   const totalCast = p.forVotes + p.againstVotes + p.abstainVotes
+  const isVotable = p.status === 'active' || p.status === 'pending'
 
   return (
     <div className="flex flex-col gap-6">
@@ -40,8 +49,8 @@ export default async function ProposalDetailPage({ params }: { params: Params })
               {p.title}
             </h1>
             <div className="mt-2 text-[12.5px] text-muted-fg">
-              Proposed by <strong className="font-semibold">{p.proposer}</strong>{' '}
-              · {p.date}
+              Proposed by{' '}
+              <strong className="font-semibold">{p.proposer}</strong> · {p.date}
             </div>
           </div>
 
@@ -62,57 +71,68 @@ export default async function ProposalDetailPage({ params }: { params: Params })
 
           <section className="rounded-xl border border-border bg-surface px-6 py-[22px]">
             <h3 className="mb-3 text-base font-bold">Description</h3>
-            <div className="flex flex-col gap-3 text-[15px] text-fg-2">
-              <p>
-                This proposal funds the next phase of collaboration with Builder
-                maintainers: upstreaming proven work into the official Builder
-                template and submitting the strongest feature tracks to core
-                repositories in structured batches.
-              </p>
-              <p>
-                Deliverables include cherry-picked, generic improvements landing
-                in{' '}
-                <code className="rounded bg-surface-2 px-1 py-0.5 font-mono text-[13px]">
-                  BuilderOSS/builder-template-app
-                </code>
-                , a fork-to-launch checklist, and two upstream PR batches
-                covering up to 8 production-tested feature tracks.
-              </p>
-              <h4 className="mt-2 text-sm font-semibold text-fg">Milestones</h4>
-              <ol className="ml-5 list-decimal space-y-1 text-[15px]">
-                <li>Official template enhancements — 1.5 ETH</li>
-                <li>Upstream PR Batch 1 — 1.25 ETH</li>
-                <li>Upstream PR Batch 2 + final reporting — 1.25 ETH</li>
-              </ol>
-            </div>
+            {description ? (
+              <div className="whitespace-pre-wrap break-words text-[14.5px] leading-relaxed text-fg-2">
+                {description}
+              </div>
+            ) : (
+              <div className="text-sm text-muted-fg">
+                (No description provided.)
+              </div>
+            )}
+            {/* Markdown rendering (rehype/remark) lands in a follow-up — for */}
+            {/* now we render the raw description text with whitespace preserved. */}
           </section>
 
           <section className="rounded-xl border border-border bg-surface px-6 py-[22px]">
-            <h3 className="mb-3 text-base font-bold">Transactions</h3>
-            <ul className="flex flex-col gap-2.5">
-              <li className="grid grid-cols-1 gap-3 rounded-md bg-surface-2 px-4 py-3 sm:grid-cols-[1fr_1fr_100px]">
-                <div>
-                  <div className="text-[12.5px] text-muted-fg">Target</div>
-                  <div className="font-mono text-xs">0x98bc…D1cF</div>
-                </div>
-                <div>
-                  <div className="text-[12.5px] text-muted-fg">Function</div>
-                  <div className="font-mono text-xs">createEscrow(...)</div>
-                </div>
-                <div>
-                  <div className="text-[12.5px] text-muted-fg">Value</div>
-                  <div className="text-sm font-bold">4.0 ETH</div>
-                </div>
-              </li>
-            </ul>
+            <h3 className="mb-3 text-base font-bold">
+              Transactions
+              <span className="ml-2 text-[12.5px] font-normal text-muted-fg">
+                {transactions.length}
+              </span>
+            </h3>
+            {transactions.length === 0 ? (
+              <div className="text-sm text-muted-fg">
+                (No transactions on this proposal.)
+              </div>
+            ) : (
+              <ul className="flex flex-col gap-2.5">
+                {transactions.map((t, i) => (
+                  <li
+                    key={i}
+                    className="grid grid-cols-1 gap-3 rounded-md bg-surface-2 px-4 py-3 sm:grid-cols-[1fr_1fr_120px]"
+                  >
+                    <div>
+                      <div className="text-[12.5px] text-muted-fg">Target</div>
+                      <div className="font-mono text-xs">{t.targetShort}</div>
+                    </div>
+                    <div>
+                      <div className="text-[12.5px] text-muted-fg">Calldata</div>
+                      <div className="font-mono text-xs">{t.calldataPreview}</div>
+                    </div>
+                    <div>
+                      <div className="text-[12.5px] text-muted-fg">Value</div>
+                      <div className="text-sm font-bold">
+                        {trimDecimals(t.valueEth, 4)} ETH
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {/* Function-name + arg decoding lands with the upstream tx-decoder hook. */}
           </section>
         </div>
 
-        <VotePanel
-          votingPower={4}
-          active={p.status === 'active' || p.status === 'pending'}
-        />
+        <VotePanel votingPower={4} active={isVotable} />
       </div>
     </div>
   )
+}
+
+function trimDecimals(value: string, max: number): string {
+  if (!value) return value
+  if (!value.includes('.')) return value
+  const [intPart, decPart] = value.split('.')
+  return `${intPart}.${decPart.slice(0, max).replace(/0+$/, '') || '0'}`
 }
