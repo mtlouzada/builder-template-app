@@ -127,3 +127,12 @@ export const daoConfig: DaoConfig = {
     // website: 'https://yourdao.com',
   },
 }
+
+/**
+ * Three-color palette used by `<AuctionArt>` as a placeholder when an auction
+ * has no on-chain image. Derived from the fork's accent so it stays on-brand
+ * without per-fork hand-tuning. Real auction art always wins when present.
+ */
+export function fallbackArtPalette(): [string, string, string] {
+  return [daoConfig.theme.accent, '#ffffff', '#0b0b0c']
+}

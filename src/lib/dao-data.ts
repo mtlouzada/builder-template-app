@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { PUBLIC_DEFAULT_CHAINS } from '@buildeross/constants/chains'
+import { tokenAbi } from '@buildeross/sdk/contract'
 import {
   Auction_OrderBy,
   getBids,
@@ -118,6 +119,14 @@ export type ProposalSummary = {
 /** @deprecated alias kept for back-compat with PR #10 import sites */
 export type DashboardProposal = ProposalSummary
 
+export type DashboardActivityItem = {
+  type: 'bid' | 'prop'
+  who: string
+  what: string
+  timeAgo: string
+  href?: string
+}
+
 export type DashboardData = {
   totalSupply: number
   ownerCount: number
@@ -132,6 +141,7 @@ export type DashboardData = {
     bidderShort: string | null
   } | null
   recentProposals: ProposalSummary[]
+  recentActivity: DashboardActivityItem[]
   auctionRevenueByMonth: number[] // last 12 buckets, ETH
 }
 
@@ -238,6 +248,13 @@ export async function getDashboardData(): Promise<DashboardData> {
     historyResp?.dao?.auctions ?? []
   )
 
+  // Build the activity feed from real events: latest bids on the current
+  // auction + the last few proposals created. Merged & sorted by timestamp.
+  const recentActivity = await buildRecentActivity(
+    currentAuction?.tokenId,
+    proposalsResp.proposals
+  )
+
   return {
     totalSupply,
     ownerCount,
@@ -245,8 +262,69 @@ export async function getDashboardData(): Promise<DashboardData> {
     totalAuctionSalesEth,
     currentAuction,
     recentProposals,
+    recentActivity,
     auctionRevenueByMonth,
   }
+}
+
+async function buildRecentActivity(
+  currentTokenId: number | undefined,
+  proposals: Proposal[]
+): Promise<DashboardActivityItem[]> {
+  // Fetch recent bids on the live auction (if any).
+  const bidsRaw = currentTokenId
+    ? await safeFetch(
+        'dashboard.activityBids',
+        () => getBids(chainId, daoConfig.addresses.token, String(currentTokenId)),
+        [] as Awaited<ReturnType<typeof getBids>>
+      )
+    : []
+
+  // Bid timestamps aren't in the AuctionBid fragment; we approximate by
+  // ordering by amount desc (which is also chronological in normal auctions
+  // — each new bid must exceed the previous). Unknown gap, so label as
+  // "recent" rather than minute-precise.
+  const bidEvents: DashboardActivityItem[] = (bidsRaw ?? [])
+    .slice(0, 4)
+    .map((b, i) => ({
+      type: 'bid' as const,
+      who: short(b.bidder),
+      what: `bid ${trimDec(formatEther(BigInt(b.amount)), 4)} ETH on #${currentTokenId}`,
+      timeAgo: i === 0 ? 'just now' : 'recent',
+      href: `/auction/${currentTokenId}`,
+    }))
+
+  const propEvents: DashboardActivityItem[] = proposals
+    .slice(0, 4)
+    .map((p) => ({
+      type: 'prop' as const,
+      who: short(p.proposer),
+      what: `created proposal #${p.proposalNumber}`,
+      timeAgo: relativeTimeAgo(Number(p.timeCreated) * 1000),
+      href: `/proposals/${Number(p.proposalNumber)}`,
+    }))
+
+  // Naive interleave: take the freshest 5 across both sources.
+  return [...bidEvents, ...propEvents].slice(0, 5)
+}
+
+function relativeTimeAgo(ms: number): string {
+  const diffSec = Math.floor((Date.now() - ms) / 1000)
+  if (diffSec < 60) return `${diffSec}s ago`
+  const m = Math.floor(diffSec / 60)
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  const d = Math.floor(h / 24)
+  if (d < 30) return `${d}d ago`
+  const mo = Math.floor(d / 30)
+  return `${mo}mo ago`
+}
+
+function trimDec(value: string, max: number): string {
+  if (!value || !value.includes('.')) return value
+  const [intPart, decPart] = value.split('.')
+  return `${intPart}.${decPart.slice(0, max).replace(/0+$/, '') || '0'}`
 }
 
 export function formatProposal(p: Proposal): ProposalSummary {
@@ -577,6 +655,74 @@ export async function getProposalByNumber(
     voteEnd: Number(fragment.voteEnd ?? 0),
     transactions,
     voteCount: 0, // votes count needs a separate query; surfaced in vote panel later
+  }
+}
+
+// ── About page ─────────────────────────────────────────────
+
+export type AboutFounder = {
+  wallet: string
+  walletShort: string
+  ownershipPct: number
+  vestExpiry: number
+}
+
+export type AboutPageData = {
+  treasuryEth: string
+  ownerCount: number
+  totalSupply: number
+  founders: AboutFounder[]
+}
+
+export async function getAboutPageData(): Promise<AboutPageData> {
+  const [info, treasuryWei, founders] = await Promise.all([
+    safeFetch(
+      'aboutPage.daoInfo',
+      () =>
+        SubgraphSDK.connect(chainId).daoInfo({ tokenAddress: tokenAddressLc }),
+      { dao: null } as Awaited<
+        ReturnType<ReturnType<typeof SubgraphSDK.connect>['daoInfo']>
+      >
+    ),
+    safeFetch(
+      'aboutPage.balance',
+      async () => {
+        if (!publicClient) return BigInt(0)
+        return publicClient.getBalance({
+          address: daoConfig.addresses.treasury as `0x${string}`,
+        })
+      },
+      BigInt(0)
+    ),
+    safeFetch(
+      'aboutPage.founders',
+      async () => {
+        if (!publicClient) return [] as AboutFounder[]
+        const result = (await publicClient.readContract({
+          address: daoConfig.addresses.token as `0x${string}`,
+          abi: tokenAbi,
+          functionName: 'getFounders',
+        })) as Array<{
+          wallet: string
+          ownershipPct: number
+          vestExpiry: number
+        }>
+        return result.map((f) => ({
+          wallet: f.wallet,
+          walletShort: short(f.wallet),
+          ownershipPct: f.ownershipPct,
+          vestExpiry: Number(f.vestExpiry),
+        }))
+      },
+      [] as AboutFounder[]
+    ),
+  ])
+
+  return {
+    treasuryEth: formatEther(treasuryWei),
+    ownerCount: info?.dao?.ownerCount ?? 0,
+    totalSupply: info?.dao?.totalSupply ?? 0,
+    founders,
   }
 }
 

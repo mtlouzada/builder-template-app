@@ -9,9 +9,8 @@ import { KpiCard } from '@/components/dao/KpiCard'
 import { ProposalCard } from '@/components/dao/ProposalCard'
 import { StatTile } from '@/components/dao/StatTile'
 import { Button } from '@/components/ui/button'
-import { daoConfig } from '@/lib/dao.config'
+import { daoConfig, fallbackArtPalette } from '@/lib/dao.config'
 import { getDashboardData } from '@/lib/dao-data'
-import { ACTIVITY, PRESETS } from '@/lib/mockData'
 
 const CHAIN_NAMES: Record<number, string> = {
   1: 'Ethereum',
@@ -28,7 +27,7 @@ export default async function Dashboard() {
 
   const tokenLabel = daoConfig.name.split(' ')[0]
   const chainName = CHAIN_NAMES[daoConfig.chainId] ?? `Chain ${daoConfig.chainId}`
-  const palette = PRESETS.builder.artworkPalette
+  const palette = fallbackArtPalette()
   const auction = data.currentAuction
 
   const treasuryEthDisplay = trimDecimals(data.treasuryEth, 4)
@@ -67,12 +66,12 @@ export default async function Dashboard() {
             <StatTile
               icon={<BadgeCheck className="h-4 w-4" />}
               label={`Total ${tokenLabel}`}
-              value={data.totalSupply.toLocaleString()}
+              value={data.totalSupply.toLocaleString('en-US')}
             />
             <StatTile
               icon={<Users className="h-4 w-4" />}
               label="Members"
-              value={data.ownerCount.toLocaleString()}
+              value={data.ownerCount.toLocaleString('en-US')}
             />
             <StatTile
               icon={<Diamond className="h-4 w-4" />}
@@ -171,9 +170,7 @@ export default async function Dashboard() {
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-xl font-bold tracking-tight">Activity</h2>
           </div>
-          {/* Activity feed still on mocks. Wiring it requires merging recent */}
-          {/* bids + votes + proposal-created events; lands in a follow-up PR. */}
-          <ActivityFeed items={ACTIVITY} />
+          <ActivityFeed items={data.recentActivity} />
         </section>
       </div>
 
@@ -226,7 +223,7 @@ export default async function Dashboard() {
             label="Total auction sales"
           />
           <KpiCard
-            value={data.ownerCount.toLocaleString()}
+            value={data.ownerCount.toLocaleString('en-US')}
             label="Owners"
           />
         </div>

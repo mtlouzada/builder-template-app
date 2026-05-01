@@ -3,11 +3,13 @@ import type { Metadata } from 'next'
 import { DaoAvatar } from '@/components/DaoAvatar'
 import { AddressChip } from '@/components/dao/AddressChip'
 import { daoConfig } from '@/lib/dao.config'
-import { CONTRACTS, PRESETS } from '@/lib/mockData'
+import { getAboutPageData } from '@/lib/dao-data'
 
 export const metadata: Metadata = {
   title: 'About',
 }
+
+export const revalidate = 60
 
 const CHAIN_NAMES: Record<number, string> = {
   1: 'Ethereum',
@@ -16,9 +18,18 @@ const CHAIN_NAMES: Record<number, string> = {
   7777777: 'Zora',
 }
 
-export default function AboutPage() {
-  const preset = PRESETS.builder
+export default async function AboutPage() {
+  const data = await getAboutPageData()
   const chainName = CHAIN_NAMES[daoConfig.chainId] ?? `Chain ${daoConfig.chainId}`
+  const treasuryDisplay = trimDecimals(data.treasuryEth, 4)
+
+  const contracts: Array<{ label: string; addr: string }> = [
+    { label: 'NFT (Token)', addr: daoConfig.addresses.token },
+    { label: 'Auction House', addr: daoConfig.addresses.auction },
+    { label: 'Governor', addr: daoConfig.addresses.governor },
+    { label: 'Treasury', addr: daoConfig.addresses.treasury },
+    { label: 'Metadata', addr: daoConfig.addresses.metadata },
+  ]
 
   return (
     <div className="flex flex-col gap-6">
@@ -38,43 +49,49 @@ export default function AboutPage() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <KvBlock label="Treasury" value={`${preset.treasuryEth} ETH`} />
-          <KvBlock label="Owners" value={preset.members.toLocaleString()} />
-          <KvBlock label="Total supply" value={preset.totalSupply.toLocaleString()} />
+          <KvBlock label="Treasury" value={`${treasuryDisplay} ETH`} />
+          <KvBlock label="Owners" value={data.ownerCount.toLocaleString('en-US')} />
+          <KvBlock
+            label="Total supply"
+            value={data.totalSupply.toLocaleString('en-US')}
+          />
           <KvBlock label="Chain" value={chainName} />
         </div>
       </section>
 
       <section className="rounded-xl border border-border bg-surface px-6 py-[22px]">
         <h2 className="mb-3 text-xl font-bold tracking-tight">
-          Powering Onchain Communities.
+          About {daoConfig.name}
         </h2>
-        <p className="mb-3 text-fg-2">
-          The {daoConfig.name} mission is to develop DAO infrastructure as a
-          public good, enabling decentralized, inclusive, and transparent
-          decision-making processes that empower onchain communities to shape
-          their collective futures.
-        </p>
+        {/* Mission copy is per-fork — replace with your DAO's mission text. */}
+        <p className="mb-3 text-fg-2">{daoConfig.tagline}</p>
         <p className="text-fg-2">
-          View the full Mission, Vision and Values. New members: join us in the
-          community channel or on Discord.
+          Edit this section in{' '}
+          <code className="rounded bg-surface-2 px-1 py-0.5 font-mono text-[13px]">
+            src/app/about/page.tsx
+          </code>{' '}
+          to add your DAO&apos;s mission, vision, and links.
         </p>
       </section>
 
       <section className="rounded-xl border border-border bg-surface px-6 py-[22px]">
         <h2 className="mb-4 text-xl font-bold tracking-tight">Founders</h2>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <FounderCard
-            addr="0xE2E…6A2E1"
-            share="10%"
-            hue={200}
-          />
-          <FounderCard
-            addr="0x1cD…Eef21"
-            share="5%"
-            hue={160}
-          />
-        </div>
+        {data.founders.length === 0 ? (
+          <div className="text-sm text-muted-fg">
+            No founders configured for this DAO.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {data.founders.map((f, i) => (
+              <FounderCard
+                key={f.wallet}
+                addr={f.walletShort}
+                share={`${f.ownershipPct}%`}
+                hue={(160 + i * 50) % 360}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="rounded-xl border border-border bg-surface px-6 py-[22px]">
@@ -82,7 +99,7 @@ export default function AboutPage() {
           <h2 className="text-xl font-bold tracking-tight">Smart contracts</h2>
         </div>
         <ul className="flex flex-col gap-2">
-          {CONTRACTS.map((c) => (
+          {contracts.map((c) => (
             <li
               key={c.label}
               className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-surface-2 px-3.5 py-3"
@@ -127,6 +144,12 @@ function FounderCard({
       </div>
     </div>
   )
+}
+
+function trimDecimals(value: string, max: number): string {
+  if (!value || !value.includes('.')) return value
+  const [intPart, decPart] = value.split('.')
+  return `${intPart}.${decPart.slice(0, max).replace(/0+$/, '') || '0'}`
 }
 
 function truncate(addr: string) {

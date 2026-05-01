@@ -45,7 +45,7 @@ export function ProposalCard({ p }: { p: ProposalSummary }) {
           <span className="text-sm font-bold">
             {p.requested.eth > 0 && `${p.requested.eth} ETH`}
             {p.requested.eth > 0 && p.requested.usdc > 0 && ' · '}
-            {p.requested.usdc > 0 && `${p.requested.usdc.toLocaleString()} USDC`}
+            {p.requested.usdc > 0 && `${p.requested.usdc.toLocaleString('en-US')} USDC`}
           </span>
         </div>
       )}

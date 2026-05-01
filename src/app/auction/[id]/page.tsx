@@ -7,9 +7,8 @@ import { BidForm } from '@/components/dao/BidForm'
 import { BidHistory } from '@/components/dao/BidHistory'
 import { TimeAlert } from '@/components/dao/TimeAlert'
 import { VotingPowerExplainer } from '@/components/dao/VotingPowerExplainer'
-import { daoConfig } from '@/lib/dao.config'
+import { daoConfig, fallbackArtPalette } from '@/lib/dao.config'
 import { getAuctionPageData } from '@/lib/dao-data'
-import { PRESETS } from '@/lib/mockData'
 import { cn } from '@/lib/utils'
 
 const CHAIN_NAMES: Record<number, string> = {
@@ -30,7 +29,7 @@ export default async function AuctionPage({ params }: { params: Params }) {
 
   const data = await getAuctionPageData(tokenId)
   const tokenLabel = daoConfig.name.split(' ')[0]
-  const palette = PRESETS.builder.artworkPalette
+  const palette = fallbackArtPalette()
   const chainName = CHAIN_NAMES[daoConfig.chainId] ?? `Chain ${daoConfig.chainId}`
 
   const hasOpenAuction =

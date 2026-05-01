@@ -9,7 +9,6 @@ import { useEffect, useState } from 'react'
 
 import { DaoAvatar } from '@/components/DaoAvatar'
 import { daoConfig } from '@/lib/dao.config'
-import { AUCTION } from '@/lib/mockData'
 import { cn } from '@/lib/utils'
 
 const CHAIN_NAMES: Record<number, string> = {
@@ -22,7 +21,7 @@ const CHAIN_NAMES: Record<number, string> = {
 const NAV_ITEMS = [
   { href: '/', label: 'Dashboard', match: (p: string) => p === '/' },
   {
-    href: `/auction/${AUCTION.tokenId}`,
+    href: '/auction/latest',
     label: 'Auction',
     match: (p: string) => p.startsWith('/auction'),
   },

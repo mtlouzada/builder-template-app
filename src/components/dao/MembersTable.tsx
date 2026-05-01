@@ -52,7 +52,7 @@ export function MembersTable({ members, totalMembers, activeMembers }: Props) {
             Members
           </h1>
           <p className="mt-1 text-muted-fg">
-            {totalMembers.toLocaleString()} members · {activeMembers} active in
+            {totalMembers.toLocaleString('en-US')} members · {activeMembers} active in
             last 5 proposals
           </p>
         </div>

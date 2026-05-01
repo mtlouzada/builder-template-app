@@ -37,7 +37,7 @@ export default async function TreasuryPage() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <KpiCard value={`${treasuryDisplay} ETH`} label="Treasury balance" />
         <KpiCard value={`${salesDisplay} ETH`} label="Total auction sales" />
-        <KpiCard value={data.ownerCount.toLocaleString()} label="Owners" />
+        <KpiCard value={data.ownerCount.toLocaleString('en-US')} label="Owners" />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -78,7 +78,7 @@ export default async function TreasuryPage() {
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-xl font-bold tracking-tight">NFT holdings</h2>
           <span className="text-[12.5px] text-muted-fg">
-            {Math.max(0, data.totalSupply - data.ownerCount).toLocaleString()} in
+            {Math.max(0, data.totalSupply - data.ownerCount).toLocaleString('en-US')} in
             treasury
           </span>
         </div>
