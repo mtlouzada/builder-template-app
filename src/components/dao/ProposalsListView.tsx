@@ -5,7 +5,8 @@ import { useMemo, useState } from 'react'
 
 import { ProposalCard } from '@/components/dao/ProposalCard'
 import { Button } from '@/components/ui/button'
-import type { MockProposal, ProposalStatus } from '@/lib/mockData'
+import type { ProposalSummary } from '@/lib/dao-data'
+import type { ProposalStatus } from '@/lib/mockData'
 
 const STATUS_OPTIONS: Array<{ value: ProposalStatus | 'all'; label: string }> = [
   { value: 'all', label: 'All statuses' },
@@ -19,7 +20,7 @@ const STATUS_OPTIONS: Array<{ value: ProposalStatus | 'all'; label: string }> = 
 export function ProposalsListView({
   proposals,
 }: {
-  proposals: MockProposal[]
+  proposals: ProposalSummary[]
 }) {
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<ProposalStatus | 'all'>('all')

@@ -59,7 +59,7 @@ export function mapProposalState(state: ProposalState): ProposalStatus {
   }
 }
 
-export type DashboardProposal = {
+export type ProposalSummary = {
   id: number
   proposalNumber: number
   title: string
@@ -74,6 +74,9 @@ export type DashboardProposal = {
   requested: { eth: number; usdc: number }
 }
 
+/** @deprecated alias kept for back-compat with PR #10 import sites */
+export type DashboardProposal = ProposalSummary
+
 export type DashboardData = {
   totalSupply: number
   ownerCount: number
@@ -87,7 +90,7 @@ export type DashboardData = {
     topBidEth: string | null
     bidderShort: string | null
   } | null
-  recentProposals: DashboardProposal[]
+  recentProposals: ProposalSummary[]
   auctionRevenueByMonth: number[] // last 12 buckets, ETH
 }
 
@@ -186,7 +189,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       }
     : null
 
-  const recentProposals: DashboardProposal[] = proposalsResp.proposals.map(
+  const recentProposals: ProposalSummary[] = proposalsResp.proposals.map(
     (p) => formatProposal(p)
   )
 
@@ -205,7 +208,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   }
 }
 
-function formatProposal(p: Proposal): DashboardProposal {
+export function formatProposal(p: Proposal): ProposalSummary {
   const status = mapProposalState(p.state)
   const created = Number(p.timeCreated) * 1000
   const date = new Date(created).toLocaleDateString(undefined, {
@@ -271,6 +274,17 @@ function bucketAuctionRevenueByMonth(
 function short(addr: string) {
   if (!addr || addr.length < 10) return addr
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`
+}
+
+// ── Proposals list page ────────────────────────────────────
+
+export async function getAllProposals(limit = 50): Promise<ProposalSummary[]> {
+  const resp = await safeFetch(
+    'getAllProposals',
+    () => getProposals(chainId, tokenAddressLc, limit, 0),
+    { proposals: [] as Proposal[] }
+  )
+  return resp.proposals.map((p) => formatProposal(p))
 }
 
 // ── Auction page ───────────────────────────────────────────

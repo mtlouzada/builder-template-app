@@ -1,11 +1,11 @@
 import Link from 'next/link'
 
-import type { MockProposal } from '@/lib/mockData'
+import type { ProposalSummary } from '@/lib/dao-data'
 
 import { StatusBadge } from './StatusBadge'
 import { VoteBar } from './VoteBar'
 
-export function ProposalCard({ p }: { p: MockProposal }) {
+export function ProposalCard({ p }: { p: ProposalSummary }) {
   const total = p.forVotes + p.againstVotes + p.abstainVotes
   const hasReq = p.requested.eth > 0 || p.requested.usdc > 0
 
