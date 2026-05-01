@@ -680,6 +680,8 @@ export type ProposalTransaction = {
 
 export type ProposalDetail = {
   summary: ProposalSummary
+  /** bytes32 onchain proposal id — used to call governor.castVote(...). */
+  proposalIdHash: `0x${string}`
   description: string
   proposerFull: string
   snapshotBlockNumber: number
@@ -768,6 +770,7 @@ export async function getProposalByNumber(
 
   return {
     summary: formatProposal(proposalLike),
+    proposalIdHash: String(fragment.proposalId) as `0x${string}`,
     description: fragment.description ?? '',
     proposerFull: fragment.proposer,
     snapshotBlockNumber: Number(fragment.snapshotBlockNumber ?? 0),

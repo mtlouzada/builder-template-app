@@ -121,7 +121,10 @@ export default async function ProposalDetailPage({ params }: { params: Params })
           </section>
         </div>
 
-        <VotePanel votingPower={4} active={isVotable} />
+        <VotePanel
+          proposalIdHash={detail.proposalIdHash}
+          active={isVotable}
+        />
       </div>
     </div>
   )

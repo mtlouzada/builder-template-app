@@ -11,13 +11,6 @@ import { daoConfig, fallbackArtPalette } from '@/lib/dao.config'
 import { getAuctionPageData } from '@/lib/dao-data'
 import { cn } from '@/lib/utils'
 
-const CHAIN_NAMES: Record<number, string> = {
-  1: 'Ethereum',
-  10: 'Optimism',
-  8453: 'Base',
-  7777777: 'Zora',
-}
-
 export const revalidate = 30
 
 type Params = Promise<{ id: string }>
@@ -30,7 +23,6 @@ export default async function AuctionPage({ params }: { params: Params }) {
   const data = await getAuctionPageData(tokenId)
   const tokenLabel = daoConfig.name.split(' ')[0]
   const palette = fallbackArtPalette()
-  const chainName = CHAIN_NAMES[daoConfig.chainId] ?? `Chain ${daoConfig.chainId}`
 
   const hasOpenAuction =
     !!data.endTimeUnix && data.endTimeUnix * 1000 > Date.now()
@@ -101,9 +93,8 @@ export default async function AuctionPage({ params }: { params: Params }) {
           {hasOpenAuction ? (
             <>
               <BidForm
+                tokenId={data.tokenId}
                 topBid={topBidNum}
-                network={chainName}
-                balanceEth={1.284}
                 enableComment={daoConfig.features.bidComments}
               />
               <VotingPowerExplainer scenario="eligible" />
