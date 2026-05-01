@@ -1,14 +1,16 @@
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 
 import { AuctionArt } from '@/components/dao/AuctionArt'
 import { BidForm } from '@/components/dao/BidForm'
 import { BidHistory } from '@/components/dao/BidHistory'
 import { TimeAlert } from '@/components/dao/TimeAlert'
 import { VotingPowerExplainer } from '@/components/dao/VotingPowerExplainer'
-import { cn } from '@/lib/utils'
 import { daoConfig } from '@/lib/dao.config'
-import { AUCTION, PRESETS } from '@/lib/mockData'
+import { getAuctionPageData } from '@/lib/dao-data'
+import { PRESETS } from '@/lib/mockData'
+import { cn } from '@/lib/utils'
 
 const CHAIN_NAMES: Record<number, string> = {
   1: 'Ethereum',
@@ -17,56 +19,109 @@ const CHAIN_NAMES: Record<number, string> = {
   7777777: 'Zora',
 }
 
+export const revalidate = 30
+
 type Params = Promise<{ id: string }>
 
 export default async function AuctionPage({ params }: { params: Params }) {
   const { id } = await params
-  const tokenId = Number.isFinite(parseInt(id, 10)) ? parseInt(id, 10) : AUCTION.tokenId
+  const tokenId = parseInt(id, 10)
+  if (!Number.isFinite(tokenId) || tokenId < 0) notFound()
 
-  // Mock — real app would derive from subgraph: latest token id and per-token data.
-  const preset = PRESETS.builder
+  const data = await getAuctionPageData(tokenId)
   const tokenLabel = daoConfig.name.split(' ')[0]
-  const topBid = AUCTION.recentBids[0]
-  const isLatest = tokenId === AUCTION.tokenId
-  const minBid = (topBid.amount * 1.02).toFixed(3)
+  const palette = PRESETS.builder.artworkPalette
   const chainName = CHAIN_NAMES[daoConfig.chainId] ?? `Chain ${daoConfig.chainId}`
+
+  const hasOpenAuction =
+    !!data.endTimeUnix && data.endTimeUnix * 1000 > Date.now()
+  const endsIn = data.endTimeUnix ? formatEndsIn(data.endTimeUnix) : null
+  const minBidEth = data.topBidEth
+    ? trimDecimals((Number(data.topBidEth) * 1.02).toFixed(6), 4)
+    : null
+  const topBidNum = data.topBidEth ? Number(data.topBidEth) : 0
 
   return (
     <div className="flex flex-col gap-6">
-      <TimeAlert icon={<Clock className="h-4 w-4" />} dismissible>
-        Auction for {tokenLabel} #{tokenId} ends in 17h 54m.
-      </TimeAlert>
+      {hasOpenAuction && endsIn && (
+        <TimeAlert icon={<Clock className="h-4 w-4" />} dismissible>
+          Auction for {tokenLabel} #{data.tokenId} ends in {endsIn}.
+        </TimeAlert>
+      )}
 
       <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1fr_0.85fr]">
         <div>
           <Tabs />
-          <div className="aspect-square overflow-hidden rounded-xl border border-border">
-            <AuctionArt palette={preset.artworkPalette} />
+          <div className="aspect-square overflow-hidden rounded-xl border border-border bg-surface-2">
+            {data.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={resolveIpfs(data.image)}
+                alt={data.name ?? `${tokenLabel} #${data.tokenId}`}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <AuctionArt palette={palette} />
+            )}
           </div>
         </div>
 
         <div className="flex flex-col gap-4 pt-3">
-          <AuctionNav tokenId={tokenId} isLatest={isLatest} date={AUCTION.date} />
+          <AuctionNav
+            tokenId={data.tokenId}
+            isLatest={data.isLatest}
+            prevId={data.prevTokenId}
+            nextId={data.nextTokenId}
+            endTimeUnix={data.endTimeUnix}
+          />
 
           <h1 className="font-display text-[clamp(36px,5vw,56px)] font-extrabold leading-[1.04] tracking-[-0.025em]">
-            {tokenLabel} #{tokenId}
+            {data.name ?? `${tokenLabel} #${data.tokenId}`}
           </h1>
 
           <div className="my-2 grid grid-cols-2 gap-4">
-            <Kv label="Top bid" value={`${topBid.amount} ETH`} />
-            <Kv label="Top bidder" value={topBid.addr} mono />
-            <Kv label="Ends in" value="17h 54m" />
-            <Kv label="Min next bid" value={`${minBid} ETH`} />
+            <Kv
+              label="Top bid"
+              value={data.topBidEth ? `${trimDecimals(data.topBidEth, 4)} ETH` : 'No bids yet'}
+            />
+            <Kv
+              label="Top bidder"
+              value={data.bidderShort ?? '—'}
+              mono={!!data.bidderShort}
+            />
+            <Kv
+              label={hasOpenAuction ? 'Ends in' : 'Status'}
+              value={hasOpenAuction ? (endsIn ?? '—') : 'Settled'}
+            />
+            <Kv
+              label="Min next bid"
+              value={minBidEth ? `${minBidEth} ETH` : '—'}
+            />
           </div>
 
-          <BidForm
-            topBid={topBid.amount}
-            network={chainName}
-            balanceEth={1.284}
-            enableComment={daoConfig.features.bidComments}
-          />
-
-          <VotingPowerExplainer scenario="eligible" />
+          {hasOpenAuction ? (
+            <>
+              <BidForm
+                topBid={topBidNum}
+                network={chainName}
+                balanceEth={1.284}
+                enableComment={daoConfig.features.bidComments}
+              />
+              <VotingPowerExplainer scenario="eligible" />
+            </>
+          ) : (
+            <div className="rounded-md border border-dashed border-border bg-surface-2 px-4 py-5 text-sm text-muted-fg">
+              This auction has ended.{' '}
+              {data.nextTokenId != null && (
+                <Link
+                  href={`/auction/${data.nextTokenId}`}
+                  className="font-semibold text-accent-strong hover:underline"
+                >
+                  See next auction →
+                </Link>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -74,7 +129,12 @@ export default async function AuctionPage({ params }: { params: Params }) {
         <div className="mb-4">
           <h2 className="text-xl font-bold tracking-tight">Bid history</h2>
         </div>
-        <BidHistory bids={AUCTION.recentBids} />
+        <BidHistory
+          bids={data.bids.map((b) => ({
+            amount: trimDecimals(b.amountEth, 4),
+            addr: b.bidderShort,
+          }))}
+        />
       </section>
     </div>
   )
@@ -104,16 +164,27 @@ function Tabs() {
 function AuctionNav({
   tokenId,
   isLatest,
-  date,
+  prevId,
+  nextId,
+  endTimeUnix,
 }: {
   tokenId: number
   isLatest: boolean
-  date: string
+  prevId: number | null
+  nextId: number | null
+  endTimeUnix: number | null
 }) {
-  const prevId = tokenId - 1
+  const date = endTimeUnix
+    ? new Date(endTimeUnix * 1000).toLocaleDateString(undefined, {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+      })
+    : null
+
   return (
     <div className="flex items-center gap-2.5">
-      {prevId >= 0 ? (
+      {prevId != null ? (
         <Link
           href={`/auction/${prevId}`}
           aria-label="Previous auction"
@@ -130,27 +201,44 @@ function AuctionNav({
           <ChevronLeft className="h-4 w-4" />
         </button>
       )}
-      <button
-        aria-label="Next auction"
-        disabled={isLatest}
-        className={cn(
-          'flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface-2 text-fg',
-          isLatest ? 'opacity-30' : 'hover:bg-surface-3'
-        )}
-      >
-        <ChevronRight className="h-4 w-4" />
-      </button>
+      {nextId != null ? (
+        <Link
+          href={`/auction/${nextId}`}
+          aria-label="Next auction"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface-2 text-fg hover:bg-surface-3"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Link>
+      ) : (
+        <button
+          aria-label="Next auction"
+          disabled
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-surface-2 text-fg opacity-30"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      )}
       {isLatest && (
         <span className="rounded-full border border-border bg-surface-2 px-2.5 py-0.5 text-xs font-medium">
           Latest auction
         </span>
       )}
-      <span className="ml-auto text-[12.5px] text-muted-fg">{date}</span>
+      {date && (
+        <span className="ml-auto text-[12.5px] text-muted-fg">Token #{tokenId} · {date}</span>
+      )}
     </div>
   )
 }
 
-function Kv({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function Kv({
+  label,
+  value,
+  mono,
+}: {
+  label: string
+  value: string
+  mono?: boolean
+}) {
   return (
     <div>
       <div className="text-[12.5px] text-muted-fg">{label}</div>
@@ -164,4 +252,27 @@ function Kv({ label, value, mono }: { label: string; value: string; mono?: boole
       </div>
     </div>
   )
+}
+
+function trimDecimals(value: string, max: number): string {
+  if (!value) return value
+  if (!value.includes('.')) return value
+  const [intPart, decPart] = value.split('.')
+  return `${intPart}.${decPart.slice(0, max).replace(/0+$/, '') || '0'}`
+}
+
+function formatEndsIn(unixSec: number): string {
+  const diff = unixSec * 1000 - Date.now()
+  if (diff <= 0) return 'Ended'
+  const h = Math.floor(diff / (1000 * 60 * 60))
+  const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  if (h >= 24) return `${Math.floor(h / 24)}d ${h % 24}h`
+  return `${h}h ${m}m`
+}
+
+function resolveIpfs(uri: string): string {
+  if (uri.startsWith('ipfs://')) {
+    return `https://gateway.pinata.cloud/ipfs/${uri.slice(7)}`
+  }
+  return uri
 }

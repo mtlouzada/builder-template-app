@@ -3,6 +3,7 @@ import 'server-only'
 import { PUBLIC_DEFAULT_CHAINS } from '@buildeross/constants/chains'
 import {
   Auction_OrderBy,
+  getBids,
   getProposals,
   OrderDirection,
   type Proposal,
@@ -270,4 +271,125 @@ function bucketAuctionRevenueByMonth(
 function short(addr: string) {
   if (!addr || addr.length < 10) return addr
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`
+}
+
+// ── Auction page ───────────────────────────────────────────
+
+export type AuctionPageBid = {
+  id: string
+  amountEth: string
+  bidder: string
+  bidderShort: string
+}
+
+export type AuctionPageData = {
+  exists: boolean
+  tokenId: number
+  name: string | null
+  image: string | null
+  endTimeUnix: number | null
+  topBidEth: string | null
+  bidderShort: string | null
+  bids: AuctionPageBid[]
+  prevTokenId: number | null
+  nextTokenId: number | null
+  isLatest: boolean
+}
+
+export async function getAuctionPageData(
+  tokenId: number
+): Promise<AuctionPageData> {
+  const tokenIdStr = String(tokenId)
+  const tokenIdBig = BigInt(tokenId).toString() as unknown as bigint
+
+  const [auctionsResp, bidsResp, prevNextResp] = await Promise.all([
+    safeFetch(
+      'auctionPage.findAuctions',
+      () =>
+        SubgraphSDK.connect(chainId).findAuctions({
+          where: { dao: tokenAddressLc },
+          orderBy: Auction_OrderBy.EndTime,
+          orderDirection: OrderDirection.Desc,
+          first: 50,
+        }),
+      { auctions: [] } as Awaited<
+        ReturnType<ReturnType<typeof SubgraphSDK.connect>['findAuctions']>
+      >
+    ),
+    safeFetch(
+      'auctionPage.getBids',
+      () => getBids(chainId, daoConfig.addresses.token, tokenIdStr),
+      [] as Awaited<ReturnType<typeof getBids>>
+    ),
+    safeFetch(
+      'auctionPage.prevNext',
+      () =>
+        SubgraphSDK.connect(chainId).daoNextAndPreviousTokens({
+          tokenAddress: daoConfig.addresses.token,
+          tokenId: tokenIdBig,
+        }),
+      { prev: [], next: [], latest: [] } as Awaited<
+        ReturnType<
+          ReturnType<typeof SubgraphSDK.connect>['daoNextAndPreviousTokens']
+        >
+      >
+    ),
+  ])
+
+  const auction = auctionsResp.auctions.find(
+    (a) => Number(a.token.tokenId) === tokenId
+  )
+
+  const bids = (bidsResp ?? []).map((b) => ({
+    id: b.id,
+    amountEth: formatEther(BigInt(b.amount)),
+    bidder: b.bidder,
+    bidderShort: short(b.bidder),
+  }))
+
+  const prevTokenId = prevNextResp.prev?.[0]
+    ? Number(prevNextResp.prev[0].tokenId)
+    : null
+  const nextTokenId = prevNextResp.next?.[0]
+    ? Number(prevNextResp.next[0].tokenId)
+    : null
+  const latestId = prevNextResp.latest?.[0]
+    ? Number(prevNextResp.latest[0].tokenId)
+    : null
+  const isLatest = latestId === tokenId
+
+  if (!auction) {
+    // Auction not in the last 50; if we have a prev/next cursor, the token
+    // exists but its auction may already be settled and pruned from the
+    // recent window. Show what we can.
+    return {
+      exists: prevNextResp.prev.length > 0 || prevNextResp.next.length > 0,
+      tokenId,
+      name: null,
+      image: null,
+      endTimeUnix: null,
+      topBidEth: null,
+      bidderShort: null,
+      bids,
+      prevTokenId,
+      nextTokenId,
+      isLatest,
+    }
+  }
+
+  return {
+    exists: true,
+    tokenId,
+    name: auction.token.name,
+    image: auction.token.image ?? null,
+    endTimeUnix: Number(auction.endTime),
+    topBidEth: auction.highestBid
+      ? formatEther(BigInt(auction.highestBid.amount))
+      : null,
+    bidderShort: auction.highestBid ? short(auction.highestBid.bidder) : null,
+    bids,
+    prevTokenId,
+    nextTokenId,
+    isLatest,
+  }
 }

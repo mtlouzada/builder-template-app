@@ -1,6 +1,11 @@
-import type { MockBid } from '@/lib/mockData'
+export type BidHistoryItem = {
+  amount: number | string
+  addr: string
+  time?: string
+  comment?: string | null
+}
 
-export function BidHistory({ bids }: { bids: MockBid[] }) {
+export function BidHistory({ bids }: { bids: BidHistoryItem[] }) {
   if (bids.length === 0) {
     return (
       <div className="rounded-md border border-dashed border-border bg-surface-2 px-4 py-6 text-center text-sm text-muted-fg">
@@ -18,7 +23,8 @@ export function BidHistory({ bids }: { bids: MockBid[] }) {
           <div>
             <div className="text-[17px] font-bold text-fg">{b.amount} ETH</div>
             <div className="font-mono text-xs text-muted-fg">
-              {b.addr} · {b.time}
+              {b.addr}
+              {b.time && ` · ${b.time}`}
             </div>
             {b.comment && (
               <div className="mt-1.5 text-[13px] italic text-fg-2">
