@@ -1,12 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 import { daoConfig } from '@/lib/dao.config'
-import {
-  OG_CONTENT_TYPE,
-  OG_SIZE,
-  ogColors,
-  resolveIpfs,
-} from '@/lib/og-utils'
+import { OG_CONTENT_TYPE, OG_SIZE, ogColors, resolveIpfs } from '@/lib/og-utils'
 
 export const alt = `${daoConfig.name} — ${daoConfig.tagline}`
 export const size = OG_SIZE
@@ -40,7 +35,6 @@ export default async function DashboardOGImage() {
           }}
         >
           {logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={logoUrl}
               alt={daoConfig.name}

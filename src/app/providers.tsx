@@ -1,5 +1,7 @@
 'use client'
 
+import '@rainbow-me/rainbowkit/styles.css'
+
 import {
   ChainStoreProvider,
   createChainStore,
@@ -15,8 +17,6 @@ import { WagmiProvider } from 'wagmi'
 
 import { getDaoConfig } from '@/config'
 import { config } from '@/utils/clientConfig'
-
-import '@rainbow-me/rainbowkit/styles.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {

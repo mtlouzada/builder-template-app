@@ -101,9 +101,7 @@ function resolveTarget(): ResolvedTarget {
     const preset = SWITCHABLE_PRESETS[first]
     if (!preset) {
       console.error(`❌ Unknown preset: ${first}`)
-      console.error(
-        `   Available presets: ${Object.keys(SWITCHABLE_PRESETS).join(', ')}`
-      )
+      console.error(`   Available presets: ${Object.keys(SWITCHABLE_PRESETS).join(', ')}`)
       console.error(`   Or pass a 0x-prefixed token address directly.`)
       process.exit(1)
     }
@@ -148,8 +146,7 @@ function resolveTarget(): ResolvedTarget {
     chainId,
     networkType,
     tokenAddress: first,
-    themeOverrides:
-      Object.keys(themeOverrides).length > 0 ? themeOverrides : undefined,
+    themeOverrides: Object.keys(themeOverrides).length > 0 ? themeOverrides : undefined,
   }
 }
 

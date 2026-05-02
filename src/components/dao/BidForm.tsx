@@ -53,7 +53,10 @@ export function BidForm({
 
   const onWrongChain = isConnected && connectedChainId !== daoConfig.chainId
 
-  const minBid = useMemo(() => (topBid * minIncrementPct).toFixed(3), [topBid, minIncrementPct])
+  const minBid = useMemo(
+    () => (topBid * minIncrementPct).toFixed(3),
+    [topBid, minIncrementPct]
+  )
   const numeric = parseFloat(bid)
   const balanceEth = balance ? Number(balance.formatted) : undefined
   const belowMin = !Number.isNaN(numeric) && numeric < parseFloat(minBid)
@@ -204,9 +207,7 @@ export function BidForm({
         ) : (
           <>
             {balanceEth !== undefined ? (
-              <>
-                Balance: {balanceEth.toFixed(4)} ETH ·{' '}
-              </>
+              <>Balance: {balanceEth.toFixed(4)} ETH · </>
             ) : null}
             Network: {chainNameOf(daoConfig.chainId)} ✓
           </>

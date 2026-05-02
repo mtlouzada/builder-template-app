@@ -1,3 +1,5 @@
+import './globals.css'
+
 import type { Metadata } from 'next'
 import {
   Fraunces,
@@ -13,8 +15,6 @@ import { TweaksPanel } from '@/components/TweaksPanel'
 import { daoConfig } from '@/lib/dao.config'
 
 import { Providers } from './providers'
-
-import './globals.css'
 
 const geistSans = Geist({
   variable: '--font-geist',
@@ -50,7 +50,15 @@ const DISPLAY_FONT_VAR: Record<string, string> = {
   Fraunces: 'var(--font-fraunces)',
 }
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  process.env.VERCEL_PROJECT_PRODUCTION_URL ??
+  process.env.VERCEL_URL ??
+  'http://localhost:3000'
+const metadataBase = new URL(siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`)
+
 export const metadata: Metadata = {
+  metadataBase,
   title: {
     default: daoConfig.name,
     template: `%s | ${daoConfig.name}`,
@@ -58,18 +66,13 @@ export const metadata: Metadata = {
   description: daoConfig.tagline,
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   const { accent, radius, displayFont } = daoConfig.theme
   const rootStyle: React.CSSProperties & Record<string, string> = {
     '--accent': accent,
     '--accent-strong': `color-mix(in oklab, ${accent} 80%, black)`,
     '--radius': `${radius}px`,
-    '--font-display-active':
-      DISPLAY_FONT_VAR[displayFont] ?? 'var(--font-geist)',
+    '--font-display-active': DISPLAY_FONT_VAR[displayFont] ?? 'var(--font-geist)',
   }
 
   return (

@@ -2,13 +2,7 @@ import { ImageResponse } from 'next/og'
 
 import { daoConfig } from '@/lib/dao.config'
 import { getAuctionPageData } from '@/lib/dao-data'
-import {
-  OG_CONTENT_TYPE,
-  OG_SIZE,
-  ogColors,
-  resolveIpfs,
-  trimEth,
-} from '@/lib/og-utils'
+import { OG_CONTENT_TYPE, OG_SIZE, ogColors, resolveIpfs, trimEth } from '@/lib/og-utils'
 
 export const alt = `${daoConfig.name} auction`
 export const size = OG_SIZE
@@ -88,7 +82,6 @@ export default async function AuctionOGImage({ params }: { params: Params }) {
             }}
           >
             {logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={logoUrl}
                 alt={daoConfig.name}
@@ -97,7 +90,9 @@ export default async function AuctionOGImage({ params }: { params: Params }) {
                 style={{ borderRadius: 999 }}
               />
             )}
-            <div style={{ display: 'flex', fontSize: 22, color: c.fgDim, fontWeight: 600 }}>
+            <div
+              style={{ display: 'flex', fontSize: 22, color: c.fgDim, fontWeight: 600 }}
+            >
               {daoConfig.name}
             </div>
             <div

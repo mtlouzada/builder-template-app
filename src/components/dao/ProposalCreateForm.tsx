@@ -103,11 +103,10 @@ export function ProposalCreateForm() {
     return () => clearTimeout(t)
   }, [isMined, router])
 
-  const validation = useMemo(() => validate(title, description, txs), [
-    title,
-    description,
-    txs,
-  ])
+  const validation = useMemo(
+    () => validate(title, description, txs),
+    [title, description, txs]
+  )
 
   const phase: 'connect' | 'switch' | 'sign' | 'mine' | 'done' | 'error' | 'idle' =
     !isConnected
@@ -133,9 +132,7 @@ export function ProposalCreateForm() {
       return
     }
     const targets = txs.map((t) => t.target as Address)
-    const calldatas = txs.map((t) =>
-      (t.calldata?.trim() || '0x') as `0x${string}`
-    )
+    const calldatas = txs.map((t) => (t.calldata?.trim() || '0x') as `0x${string}`)
     const fullDescription = composeDescription(title, description)
 
     writeContract({
@@ -150,9 +147,7 @@ export function ProposalCreateForm() {
     setTxs((prev) => prev.map((t, j) => (i === j ? { ...t, ...patch } : t)))
   const addTx = () => setTxs((prev) => [...prev, { ...EMPTY_TX }])
   const removeTx = (i: number) =>
-    setTxs((prev) =>
-      prev.length === 1 ? prev : prev.filter((_, j) => i !== j)
-    )
+    setTxs((prev) => (prev.length === 1 ? prev : prev.filter((_, j) => i !== j)))
 
   return (
     <div className="flex flex-col gap-6">
@@ -230,9 +225,7 @@ export function ProposalCreateForm() {
             {description ? (
               <Markdown>{description}</Markdown>
             ) : (
-              <div className="text-sm text-muted-fg">
-                Nothing to preview yet.
-              </div>
+              <div className="text-sm text-muted-fg">Nothing to preview yet.</div>
             )}
           </div>
         ) : (
@@ -252,15 +245,11 @@ export function ProposalCreateForm() {
           <div>
             <h3 className="text-base font-bold">Transactions</h3>
             <p className="mt-0.5 text-[12.5px] text-muted-fg">
-              Each call the proposal executes on success. Use empty calldata
-              (0x) and a non-zero value to send ETH.
+              Each call the proposal executes on success. Use empty calldata (0x) and a
+              non-zero value to send ETH.
             </p>
           </div>
-          <Button
-            variant="secondary"
-            onClick={addTx}
-            className="self-start"
-          >
+          <Button variant="secondary" onClick={addTx} className="self-start">
             <Plus className="h-4 w-4" />
             Add transaction
           </Button>
@@ -309,9 +298,7 @@ export function ProposalCreateForm() {
                   value={tx.calldata}
                   onChange={(e) => updateTx(i, { calldata: e.target.value })}
                   placeholder="0x"
-                  className={textInputClass(
-                    !!tx.calldata && !isHex(tx.calldata)
-                  )}
+                  className={textInputClass(!!tx.calldata && !isHex(tx.calldata))}
                 />
               </Field>
             </li>
@@ -344,12 +331,7 @@ export function ProposalCreateForm() {
         ) : (
           <Button
             onClick={submit}
-            disabled={
-              !validation.ok ||
-              !eligible ||
-              phase === 'sign' ||
-              phase === 'mine'
-            }
+            disabled={!validation.ok || !eligible || phase === 'sign' || phase === 'mine'}
             className="w-full"
           >
             {phase === 'sign' && (
@@ -392,36 +374,29 @@ function EligibilityBanner({
   if (!connected) {
     return (
       <div className="rounded-md border border-accent/25 bg-accent/5 px-4 py-3 text-sm">
-        <strong className="font-semibold">Connect your wallet</strong> to check
-        proposal eligibility.
+        <strong className="font-semibold">Connect your wallet</strong> to check proposal
+        eligibility.
       </div>
     )
   }
   if (eligible) {
     return (
       <div className="rounded-md border border-success/25 bg-success/5 px-4 py-3 text-sm">
-        <strong className="font-semibold text-success">Eligible</strong> — you
-        hold {balance} {balance === 1 ? 'token' : 'tokens'} (threshold:{' '}
-        {threshold}).
+        <strong className="font-semibold text-success">Eligible</strong> — you hold{' '}
+        {balance} {balance === 1 ? 'token' : 'tokens'} (threshold: {threshold}).
       </div>
     )
   }
   return (
     <div className="rounded-md border border-warning/25 bg-warning/5 px-4 py-3 text-sm">
-      <strong className="font-semibold text-warning">Not eligible</strong> —
-      you hold {balance} {balance === 1 ? 'token' : 'tokens'}; the proposal
-      threshold is {threshold + 1}+.
+      <strong className="font-semibold text-warning">Not eligible</strong> — you hold{' '}
+      {balance} {balance === 1 ? 'token' : 'tokens'}; the proposal threshold is{' '}
+      {threshold + 1}+.
     </div>
   )
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="mt-2 block">
       <span className="block text-[12.5px] text-muted-fg">{label}</span>
@@ -433,9 +408,7 @@ function Field({
 function textInputClass(error: boolean): string {
   return [
     'w-full rounded-md border bg-surface px-3 py-2 font-mono text-xs outline-none',
-    error
-      ? 'border-warning focus:border-warning'
-      : 'border-border focus:border-accent',
+    error ? 'border-warning focus:border-warning' : 'border-border focus:border-accent',
   ].join(' ')
 }
 

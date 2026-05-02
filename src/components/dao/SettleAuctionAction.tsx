@@ -3,7 +3,7 @@
 import { auctionAbi } from '@buildeross/sdk/contract'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { Loader2 } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { type Address } from 'viem'
 import {
   useAccount,
@@ -23,6 +23,22 @@ type Props = {
   onSettled?: () => void
 }
 
+let currentTimeMs = 0
+
+const subscribeNow = (onStoreChange: () => void) => {
+  const updateNow = () => {
+    currentTimeMs = Date.now()
+    onStoreChange()
+  }
+
+  updateNow()
+  const interval = window.setInterval(updateNow, 30_000)
+  return () => window.clearInterval(interval)
+}
+
+const getNowSnapshot = () => currentTimeMs
+const getNowServerSnapshot = () => 0
+
 /**
  * Surfaces the "settle + start next auction" button on /auction/[id] when
  *   - this page's tokenId matches the current onchain auction
@@ -34,6 +50,7 @@ type Props = {
  */
 export function SettleAuctionAction({ tokenId, onSettled }: Props) {
   const { isConnected } = useAccount()
+  const nowMs = useSyncExternalStore(subscribeNow, getNowSnapshot, getNowServerSnapshot)
   const connectedChainId = useChainId()
   const { openConnectModal } = useConnectModal()
   const { switchChain, isPending: isSwitching } = useSwitchChain()
@@ -81,7 +98,7 @@ export function SettleAuctionAction({ tokenId, onSettled }: Props) {
   ]
 
   const isCurrentPage = Number(currentTokenId) === tokenId
-  const ended = Number(endTime) > 0 && Number(endTime) * 1000 < Date.now()
+  const ended = Number(endTime) > 0 && Number(endTime) * 1000 < nowMs
   if (!isCurrentPage || !ended || settled) return null
 
   const phase: 'connect' | 'switch' | 'sign' | 'mine' | 'done' | 'error' | 'idle' =

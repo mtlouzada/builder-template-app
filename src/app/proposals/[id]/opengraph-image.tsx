@@ -2,12 +2,7 @@ import { ImageResponse } from 'next/og'
 
 import { daoConfig } from '@/lib/dao.config'
 import { getProposalByNumber } from '@/lib/dao-data'
-import {
-  OG_CONTENT_TYPE,
-  OG_SIZE,
-  ogColors,
-  resolveIpfs,
-} from '@/lib/og-utils'
+import { OG_CONTENT_TYPE, OG_SIZE, ogColors, resolveIpfs } from '@/lib/og-utils'
 
 export const alt = `${daoConfig.name} proposal`
 export const size = OG_SIZE
@@ -88,7 +83,6 @@ export default async function ProposalOGImage({ params }: { params: Params }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={logoUrl}
                 alt={daoConfig.name}
@@ -97,7 +91,9 @@ export default async function ProposalOGImage({ params }: { params: Params }) {
                 style={{ borderRadius: 999, border: `1px solid ${c.border}` }}
               />
             )}
-            <div style={{ display: 'flex', fontSize: 24, fontWeight: 600, color: c.fgDim }}>
+            <div
+              style={{ display: 'flex', fontSize: 24, fontWeight: 600, color: c.fgDim }}
+            >
               {daoConfig.name}
             </div>
           </div>
@@ -189,9 +185,23 @@ export default async function ProposalOGImage({ params }: { params: Params }) {
           >
             {!empty && (
               <>
-                <div style={{ display: 'flex', width: `${forPct}%`, background: '#22c55e' }} />
-                <div style={{ display: 'flex', width: `${againstPct}%`, background: '#ef4444' }} />
-                <div style={{ display: 'flex', width: `${abstainPct}%`, background: '#a1a1aa' }} />
+                <div
+                  style={{ display: 'flex', width: `${forPct}%`, background: '#22c55e' }}
+                />
+                <div
+                  style={{
+                    display: 'flex',
+                    width: `${againstPct}%`,
+                    background: '#ef4444',
+                  }}
+                />
+                <div
+                  style={{
+                    display: 'flex',
+                    width: `${abstainPct}%`,
+                    background: '#a1a1aa',
+                  }}
+                />
                 {quorum > 0 && (
                   <div
                     style={{
@@ -213,10 +223,12 @@ export default async function ProposalOGImage({ params }: { params: Params }) {
               <span style={{ color: '#22c55e', fontWeight: 700 }}>{forVotes}</span> For
             </span>
             <span>
-              <span style={{ color: '#ef4444', fontWeight: 700 }}>{againstVotes}</span> Against
+              <span style={{ color: '#ef4444', fontWeight: 700 }}>{againstVotes}</span>{' '}
+              Against
             </span>
             <span>
-              <span style={{ color: '#a1a1aa', fontWeight: 700 }}>{abstainVotes}</span> Abstain
+              <span style={{ color: '#a1a1aa', fontWeight: 700 }}>{abstainVotes}</span>{' '}
+              Abstain
             </span>
             <span style={{ marginLeft: 'auto' }}>
               Quorum: <span style={{ color: c.fg, fontWeight: 700 }}>{quorum}</span>

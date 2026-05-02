@@ -18,8 +18,7 @@ type Props = {
 const TONE: Record<Tone, string> = {
   accent:
     'border-accent/25 bg-accent/10 text-accent-strong [--alert-icon:var(--accent-strong)]',
-  warning:
-    'border-warning/25 bg-warning/10 text-warning [--alert-icon:var(--warning)]',
+  warning: 'border-warning/25 bg-warning/10 text-warning [--alert-icon:var(--warning)]',
   destructive:
     'border-destructive/25 bg-destructive/10 text-destructive [--alert-icon:var(--destructive)]',
 }

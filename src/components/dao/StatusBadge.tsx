@@ -1,10 +1,7 @@
 import type { ProposalStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-const STYLES: Record<
-  ProposalStatus,
-  { color: string; bg: string; label: string }
-> = {
+const STYLES: Record<ProposalStatus, { color: string; bg: string; label: string }> = {
   active: {
     color: 'text-success',
     bg: 'bg-success/15',

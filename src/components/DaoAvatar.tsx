@@ -22,13 +22,7 @@ type Props = {
  * stripes SVG (DaoLogo) when no image is set on the contract or when the
  * gateway request fails.
  */
-export function DaoAvatar({
-  image,
-  size = 28,
-  alt,
-  fallbackColor,
-  className,
-}: Props) {
+export function DaoAvatar({ image, size = 28, alt, fallbackColor, className }: Props) {
   const [errored, setErrored] = useState(false)
   const url = resolveImageUrl(image)
   const showImage = !!url && !errored

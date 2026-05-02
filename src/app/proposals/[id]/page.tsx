@@ -2,10 +2,10 @@ import { ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { Markdown } from '@/components/Markdown'
 import { StatusBadge } from '@/components/dao/StatusBadge'
 import { VoteBar } from '@/components/dao/VoteBar'
 import { VotePanel } from '@/components/dao/VotePanel'
+import { Markdown } from '@/components/Markdown'
 import { getProposalByNumber } from '@/lib/dao-data'
 
 export const revalidate = 30
@@ -50,8 +50,8 @@ export default async function ProposalDetailPage({ params }: { params: Params })
               {p.title}
             </h1>
             <div className="mt-2 text-[12.5px] text-muted-fg">
-              Proposed by{' '}
-              <strong className="font-semibold">{p.proposer}</strong> · {p.date}
+              Proposed by <strong className="font-semibold">{p.proposer}</strong> ·{' '}
+              {p.date}
             </div>
           </div>
 
@@ -75,9 +75,7 @@ export default async function ProposalDetailPage({ params }: { params: Params })
             {description ? (
               <Markdown>{description}</Markdown>
             ) : (
-              <div className="text-sm text-muted-fg">
-                (No description provided.)
-              </div>
+              <div className="text-sm text-muted-fg">(No description provided.)</div>
             )}
           </section>
 

@@ -25,9 +25,7 @@ export function MembersTable({ members, totalMembers, activeMembers }: Props) {
 
   const filtered = useMemo(() => {
     const ql = q.toLowerCase()
-    return members.filter((m) =>
-      ((m.ens ?? '') + m.addr).toLowerCase().includes(ql)
-    )
+    return members.filter((m) => ((m.ens ?? '') + m.addr).toLowerCase().includes(ql))
   }, [members, q])
 
   const exportCsv = () => {
@@ -103,13 +101,9 @@ export function MembersTable({ members, totalMembers, activeMembers }: Props) {
                     />
                     <div>
                       <div>
-                        <strong className="font-semibold">
-                          {m.ens ?? '—'}
-                        </strong>
+                        <strong className="font-semibold">{m.ens ?? '—'}</strong>
                       </div>
-                      <div className="font-mono text-xs text-muted-fg">
-                        {m.addr}
-                      </div>
+                      <div className="font-mono text-xs text-muted-fg">{m.addr}</div>
                     </div>
                   </div>
                 </Td>
@@ -132,10 +126,7 @@ export function MembersTable({ members, totalMembers, activeMembers }: Props) {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td
-                  colSpan={5}
-                  className="px-6 py-12 text-center text-muted-fg"
-                >
+                <td colSpan={5} className="px-6 py-12 text-center text-muted-fg">
                   No members match your search.
                 </td>
               </tr>
@@ -155,13 +146,7 @@ function Th({ children }: { children?: React.ReactNode }) {
   )
 }
 
-function Td({
-  children,
-  muted = false,
-}: {
-  children: React.ReactNode
-  muted?: boolean
-}) {
+function Td({ children, muted = false }: { children: React.ReactNode; muted?: boolean }) {
   return (
     <td
       className={`border-b border-border px-5 py-3.5 last:border-b-0 ${muted ? 'text-muted-fg' : ''}`}

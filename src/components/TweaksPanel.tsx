@@ -9,7 +9,11 @@ import { PRESETS } from '@/lib/presets'
 const STORAGE_KEY = 'tweaks.v1'
 
 const FONT_OPTIONS = [
-  { value: 'Geist', label: 'Geist', cssFamily: 'var(--font-geist), system-ui, sans-serif' },
+  {
+    value: 'Geist',
+    label: 'Geist',
+    cssFamily: 'var(--font-geist), system-ui, sans-serif',
+  },
   {
     value: 'Londrina Solid',
     label: 'Londrina Solid',
@@ -65,11 +69,10 @@ function ensureFontLink() {
 
 export function TweaksPanel() {
   const [open, setOpen] = useState(false)
-  const [tweaks, setTweaks] = useState<Tweaks>(DEFAULTS)
+  const [tweaks, setTweaks] = useState<Tweaks>(() => loadTweaks())
   const { resolvedTheme, setTheme } = useTheme()
 
   useEffect(() => {
-    setTweaks(loadTweaks())
     ensureFontLink()
   }, [])
 
@@ -93,8 +96,7 @@ export function TweaksPanel() {
     }
   }, [tweaks])
 
-  const update = (patch: Partial<Tweaks>) =>
-    setTweaks((prev) => ({ ...prev, ...patch }))
+  const update = (patch: Partial<Tweaks>) => setTweaks((prev) => ({ ...prev, ...patch }))
 
   const applyPreset = (key: keyof typeof PRESETS) => {
     const p = PRESETS[key]

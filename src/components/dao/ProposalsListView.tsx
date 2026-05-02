@@ -18,11 +18,7 @@ const STATUS_OPTIONS: Array<{ value: ProposalStatus | 'all'; label: string }> = 
   { value: 'cancelled', label: 'Cancelled' },
 ]
 
-export function ProposalsListView({
-  proposals,
-}: {
-  proposals: ProposalSummary[]
-}) {
+export function ProposalsListView({ proposals }: { proposals: ProposalSummary[] }) {
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<ProposalStatus | 'all'>('all')
 
@@ -30,8 +26,7 @@ export function ProposalsListView({
     const ql = q.toLowerCase()
     return proposals.filter(
       (p) =>
-        (status === 'all' || p.status === status) &&
-        p.title.toLowerCase().includes(ql)
+        (status === 'all' || p.status === status) && p.title.toLowerCase().includes(ql)
     )
   }, [proposals, q, status])
 

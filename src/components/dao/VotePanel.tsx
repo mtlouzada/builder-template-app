@@ -60,35 +60,32 @@ export function VotePanel({
   const snapshotInPast = voteStart > 0 && voteStart <= nowSec
 
   const { data: powerReads } = useReadContracts({
-    contracts: address && snapshotInPast
-      ? [
-          {
-            address: daoConfig.addresses.governor as `0x${string}`,
-            abi: governorAbi,
-            functionName: 'getVotes' as const,
-            args: [address, BigInt(voteStart)] as const,
-            chainId: daoConfig.chainId,
-          },
-          {
-            address: daoConfig.addresses.token as `0x${string}`,
-            abi: tokenAbi,
-            functionName: 'balanceOf' as const,
-            args: [address] as const,
-            chainId: daoConfig.chainId,
-          },
-        ]
-      : [],
+    contracts:
+      address && snapshotInPast
+        ? [
+            {
+              address: daoConfig.addresses.governor as `0x${string}`,
+              abi: governorAbi,
+              functionName: 'getVotes' as const,
+              args: [address, BigInt(voteStart)] as const,
+              chainId: daoConfig.chainId,
+            },
+            {
+              address: daoConfig.addresses.token as `0x${string}`,
+              abi: tokenAbi,
+              functionName: 'balanceOf' as const,
+              args: [address] as const,
+              chainId: daoConfig.chainId,
+            },
+          ]
+        : [],
     query: { enabled: !!address && snapshotInPast },
   })
 
   const votingPower =
-    powerReads?.[0]?.status === 'success'
-      ? Number(powerReads[0].result as bigint)
-      : 0
+    powerReads?.[0]?.status === 'success' ? Number(powerReads[0].result as bigint) : 0
   const tokenBalance =
-    powerReads?.[1]?.status === 'success'
-      ? Number(powerReads[1].result as bigint)
-      : 0
+    powerReads?.[1]?.status === 'success' ? Number(powerReads[1].result as bigint) : 0
 
   let scenario: VotingPowerScenario = 'none'
   if (!isConnected) scenario = 'none'
@@ -194,9 +191,7 @@ export function VotePanel({
           className="w-full"
           disabled={isSwitching}
         >
-          {isSwitching ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : null}
+          {isSwitching ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Switch to {chainNameOf(daoConfig.chainId)}
         </Button>
       ) : (
@@ -272,15 +267,11 @@ function ChoiceBtn({
       disabled={disabled}
       className={cn(
         'rounded-md border border-border bg-surface px-2 py-2.5 text-[13px] font-semibold text-fg transition-colors hover:bg-surface-2 disabled:opacity-50',
-        active &&
-          color === 'for' &&
-          'border-vote-for bg-vote-for/15 text-vote-for',
+        active && color === 'for' && 'border-vote-for bg-vote-for/15 text-vote-for',
         active &&
           color === 'against' &&
           'border-vote-against bg-vote-against/15 text-vote-against',
-        active &&
-          color === 'abstain' &&
-          'border-border-strong bg-surface-2 text-fg'
+        active && color === 'abstain' && 'border-border-strong bg-surface-2 text-fg'
       )}
     >
       {label}

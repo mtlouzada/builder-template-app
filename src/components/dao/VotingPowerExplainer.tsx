@@ -11,11 +11,7 @@ type Props = {
   className?: string
 }
 
-export function VotingPowerExplainer({
-  scenario,
-  votingPower = 0,
-  className,
-}: Props) {
+export function VotingPowerExplainer({ scenario, votingPower = 0, className }: Props) {
   const c = render(scenario, votingPower)
   return (
     <div

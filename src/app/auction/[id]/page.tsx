@@ -25,9 +25,8 @@ export default async function AuctionPage({ params }: { params: Params }) {
   const tokenLabel = daoConfig.name.split(' ')[0]
   const palette = fallbackArtPalette()
 
-  const hasOpenAuction =
-    !!data.endTimeUnix && data.endTimeUnix * 1000 > Date.now()
-  const endsIn = data.endTimeUnix ? formatEndsIn(data.endTimeUnix) : null
+  const hasOpenAuction = !!data.endTimeUnix && data.endTimeUnix > data.nowUnixSec
+  const endsIn = data.endTimeUnix ? formatEndsIn(data.endTimeUnix, data.nowUnixSec) : null
   const minBidEth = data.topBidEth
     ? trimDecimals((Number(data.topBidEth) * 1.02).toFixed(6), 4)
     : null
@@ -74,7 +73,9 @@ export default async function AuctionPage({ params }: { params: Params }) {
           <div className="my-2 grid grid-cols-2 gap-4">
             <Kv
               label="Top bid"
-              value={data.topBidEth ? `${trimDecimals(data.topBidEth, 4)} ETH` : 'No bids yet'}
+              value={
+                data.topBidEth ? `${trimDecimals(data.topBidEth, 4)} ETH` : 'No bids yet'
+              }
             />
             <Kv
               label="Top bidder"
@@ -85,10 +86,7 @@ export default async function AuctionPage({ params }: { params: Params }) {
               label={hasOpenAuction ? 'Ends in' : 'Status'}
               value={hasOpenAuction ? (endsIn ?? '—') : 'Settled'}
             />
-            <Kv
-              label="Min next bid"
-              value={minBidEth ? `${minBidEth} ETH` : '—'}
-            />
+            <Kv label="Min next bid" value={minBidEth ? `${minBidEth} ETH` : '—'} />
           </div>
 
           {hasOpenAuction ? (
@@ -218,21 +216,15 @@ function AuctionNav({
         </span>
       )}
       {date && (
-        <span className="ml-auto text-[12.5px] text-muted-fg">Token #{tokenId} · {date}</span>
+        <span className="ml-auto text-[12.5px] text-muted-fg">
+          Token #{tokenId} · {date}
+        </span>
       )}
     </div>
   )
 }
 
-function Kv({
-  label,
-  value,
-  mono,
-}: {
-  label: string
-  value: string
-  mono?: boolean
-}) {
+function Kv({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
       <div className="text-[12.5px] text-muted-fg">{label}</div>
@@ -255,8 +247,8 @@ function trimDecimals(value: string, max: number): string {
   return `${intPart}.${decPart.slice(0, max).replace(/0+$/, '') || '0'}`
 }
 
-function formatEndsIn(unixSec: number): string {
-  const diff = unixSec * 1000 - Date.now()
+function formatEndsIn(unixSec: number, nowUnixSec: number): string {
+  const diff = (unixSec - nowUnixSec) * 1000
   if (diff <= 0) return 'Ended'
   const h = Math.floor(diff / (1000 * 60 * 60))
   const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))

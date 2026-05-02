@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
-
 import { Auction_OrderBy, OrderDirection, SubgraphSDK } from '@buildeross/sdk/subgraph'
+import { redirect } from 'next/navigation'
 
 import { daoConfig } from '@/lib/dao.config'
 

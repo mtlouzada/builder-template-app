@@ -27,8 +27,7 @@ export default async function TreasuryPage() {
             Treasury
           </h1>
           <p className="mt-1 text-muted-fg">
-            Overview of the {daoConfig.name} treasury holdings and financial
-            position.
+            Overview of the {daoConfig.name} treasury holdings and financial position.
           </p>
         </div>
         <AddressChip addr={truncate(data.treasuryAddress)} />
@@ -187,9 +186,7 @@ function Th({ children }: { children?: React.ReactNode }) {
 
 function Td({ children }: { children: React.ReactNode }) {
   return (
-    <td className="border-b border-border px-3.5 py-2.5 last:border-b-0">
-      {children}
-    </td>
+    <td className="border-b border-border px-3.5 py-2.5 last:border-b-0">{children}</td>
   )
 }
 

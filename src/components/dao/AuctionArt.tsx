@@ -73,12 +73,7 @@ export function AuctionArt({
           strokeWidth="4"
           fill="none"
         />
-        <path
-          d="M 140 170 Q 160 150 180 170"
-          stroke={c3}
-          strokeWidth="4"
-          fill="none"
-        />
+        <path d="M 140 170 Q 160 150 180 170" stroke={c3} strokeWidth="4" fill="none" />
       </svg>
     </div>
   )

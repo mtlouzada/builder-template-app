@@ -53,10 +53,7 @@ export function DaoLogo({ style, color, size = 28 }: Props) {
   if (style === 'leaf') {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <path
-          d="M12 2C7 6 4 10 4 14c0 4 3.5 7 8 7s8-3 8-7c0-4-3-8-8-12z"
-          fill={color}
-        />
+        <path d="M12 2C7 6 4 10 4 14c0 4 3.5 7 8 7s8-3 8-7c0-4-3-8-8-12z" fill={color} />
         <path
           d="M12 6c-2 2-4 5-4 8"
           stroke="#fff"
@@ -78,9 +75,15 @@ export function DaoLogo({ style, color, size = 28 }: Props) {
         border: `2px solid ${color}`,
       }}
     >
-      <div style={{ width: 3, height: size * 0.55, background: color, borderRadius: 1 }} />
-      <div style={{ width: 3, height: size * 0.55, background: color, borderRadius: 1 }} />
-      <div style={{ width: 3, height: size * 0.55, background: color, borderRadius: 1 }} />
+      <div
+        style={{ width: 3, height: size * 0.55, background: color, borderRadius: 1 }}
+      />
+      <div
+        style={{ width: 3, height: size * 0.55, background: color, borderRadius: 1 }}
+      />
+      <div
+        style={{ width: 3, height: size * 0.55, background: color, borderRadius: 1 }}
+      />
     </div>
   )
 }

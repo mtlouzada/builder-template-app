@@ -27,7 +27,9 @@ export function ActivityFeed({ items }: { items: ActivityFeedItem[] }) {
       {items.map((a, i) => {
         const body = (
           <>
-            <span className={`mt-2 h-2 w-2 rounded-full ${DOT[a.type] ?? 'bg-muted-fg'}`} />
+            <span
+              className={`mt-2 h-2 w-2 rounded-full ${DOT[a.type] ?? 'bg-muted-fg'}`}
+            />
             <div>
               <div>
                 <strong className="font-semibold">{a.who}</strong>{' '}
@@ -38,10 +40,7 @@ export function ActivityFeed({ items }: { items: ActivityFeedItem[] }) {
           </>
         )
         return (
-          <li
-            key={i}
-            className="grid grid-cols-[12px_1fr] items-start gap-3 text-sm"
-          >
+          <li key={i} className="grid grid-cols-[12px_1fr] items-start gap-3 text-sm">
             {a.href ? (
               <Link
                 href={a.href}

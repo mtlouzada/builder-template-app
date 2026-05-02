@@ -1,13 +1,13 @@
-import { ArrowUpRight, BadgeCheck, Diamond, Users } from 'lucide-react'
+import { BadgeCheck, Diamond, Users } from 'lucide-react'
 import Link from 'next/link'
 
-import { DaoAvatar } from '@/components/DaoAvatar'
 import { ActivityFeed } from '@/components/dao/ActivityFeed'
 import { AuctionArt } from '@/components/dao/AuctionArt'
 import { BarChart } from '@/components/dao/BarChart'
 import { KpiCard } from '@/components/dao/KpiCard'
 import { ProposalCard } from '@/components/dao/ProposalCard'
 import { StatTile } from '@/components/dao/StatTile'
+import { DaoAvatar } from '@/components/DaoAvatar'
 import { Button } from '@/components/ui/button'
 import { daoConfig, fallbackArtPalette } from '@/lib/dao.config'
 import { getDashboardData } from '@/lib/dao-data'
@@ -35,9 +35,7 @@ export default async function Dashboard() {
   const topBidDisplay = auction?.topBidEth
     ? `${trimDecimals(auction.topBidEth, 4)} ETH`
     : 'No bids yet'
-  const endsIn = auction
-    ? formatEndsIn(auction.endTimeUnix)
-    : '—'
+  const endsIn = auction ? formatEndsIn(auction.endTimeUnix) : '—'
 
   return (
     <div className="flex flex-col gap-6">
@@ -130,9 +128,7 @@ export default async function Dashboard() {
                 )}
               </div>
               <div className="flex flex-col gap-2.5">
-                <div className="text-[12.5px] text-muted-fg">
-                  {auction.name}
-                </div>
+                <div className="text-[12.5px] text-muted-fg">{auction.name}</div>
                 <h3 className="font-display text-[28px] font-bold leading-tight tracking-tight">
                   {tokenLabel} #{auction.tokenId}
                 </h3>
@@ -214,18 +210,9 @@ export default async function Dashboard() {
           </Link>
         </div>
         <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <KpiCard
-            value={`${treasuryEthDisplay} ETH`}
-            label="Treasury balance"
-          />
-          <KpiCard
-            value={`${auctionSalesEthDisplay} ETH`}
-            label="Total auction sales"
-          />
-          <KpiCard
-            value={data.ownerCount.toLocaleString('en-US')}
-            label="Owners"
-          />
+          <KpiCard value={`${treasuryEthDisplay} ETH`} label="Treasury balance" />
+          <KpiCard value={`${auctionSalesEthDisplay} ETH`} label="Total auction sales" />
+          <KpiCard value={data.ownerCount.toLocaleString('en-US')} label="Owners" />
         </div>
         <div className="rounded-md border border-border bg-surface p-4">
           <div className="mb-2 flex items-baseline justify-between">

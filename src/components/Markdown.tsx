@@ -67,7 +67,11 @@ export function Markdown({ children, className }: Props) {
               ...defaultSchema,
               attributes: {
                 ...defaultSchema.attributes,
-                a: [...(defaultSchema.attributes?.a ?? []), ['a', 'target'], ['a', 'rel']],
+                a: [
+                  ...(defaultSchema.attributes?.a ?? []),
+                  ['a', 'target'],
+                  ['a', 'rel'],
+                ],
                 code: [...(defaultSchema.attributes?.code ?? []), ['code', 'className']],
               },
             },
@@ -115,10 +119,7 @@ const MARKDOWN_COMPONENTS: Components = {
   table({ className, ...props }) {
     return (
       <div className="not-prose w-full overflow-x-auto rounded-md border border-border">
-        <table
-          className={cn('w-full border-collapse text-sm', className)}
-          {...props}
-        />
+        <table className={cn('w-full border-collapse text-sm', className)} {...props} />
       </div>
     )
   },
@@ -158,8 +159,7 @@ const MARKDOWN_COMPONENTS: Components = {
         className?: string
         children?: React.ReactNode
       }
-    const isBlock =
-      typeof className === 'string' && className.includes('language-')
+    const isBlock = typeof className === 'string' && className.includes('language-')
     if (isBlock) {
       return (
         <code className={cn('font-mono text-[13px]', className)} {...rest}>
@@ -182,10 +182,7 @@ const MARKDOWN_COMPONENTS: Components = {
   blockquote({ className, ...props }) {
     return (
       <blockquote
-        className={cn(
-          'border-l-2 border-border pl-4 italic text-muted-fg',
-          className
-        )}
+        className={cn('border-l-2 border-border pl-4 italic text-muted-fg', className)}
         {...props}
       />
     )

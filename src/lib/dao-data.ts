@@ -2,7 +2,6 @@ import 'server-only'
 
 import { PUBLIC_DEFAULT_CHAINS } from '@buildeross/constants/chains'
 import { erc20Abi, tokenAbi } from '@buildeross/sdk/contract'
-import { mainnet } from 'viem/chains'
 import {
   Auction_OrderBy,
   getBids,
@@ -15,6 +14,7 @@ import {
 import { ProposalState } from '@buildeross/types'
 import { transports } from '@buildeross/utils/wagmi'
 import { createPublicClient, formatEther } from 'viem'
+import { mainnet } from 'viem/chains'
 
 import { daoConfig } from './dao.config'
 import type { ProposalStatus } from './types'
@@ -26,8 +26,7 @@ const chain = PUBLIC_DEFAULT_CHAINS.find((c) => c.id === chainId)
 const publicClient = chain
   ? createPublicClient({
       chain,
-      transport:
-        transports[chainId as keyof typeof transports] ?? transports[8453],
+      transport: transports[chainId as keyof typeof transports] ?? transports[8453],
     })
   : null
 
@@ -37,7 +36,11 @@ const mainnetClient = createPublicClient({
   transport: transports[1] ?? transports[8453],
 })
 
-async function safeFetch<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
+async function safeFetch<T>(
+  label: string,
+  fn: () => Promise<T>,
+  fallback: T
+): Promise<T> {
   try {
     return await fn()
   } catch (e) {
@@ -152,76 +155,66 @@ export type DashboardData = {
 export async function getDashboardData(): Promise<DashboardData> {
   const oneYearAgo = Math.floor(Date.now() / 1000) - 60 * 60 * 24 * 365
 
-  const [
-    daoInfo,
-    auctionsResp,
-    salesResp,
-    proposalsResp,
-    historyResp,
-    treasuryWei,
-  ] = await Promise.all([
-    safeFetch(
-      'daoInfo',
-      () => SubgraphSDK.connect(chainId).daoInfo({ tokenAddress: tokenAddressLc }),
-      { dao: null } as Awaited<
-        ReturnType<ReturnType<typeof SubgraphSDK.connect>['daoInfo']>
-      >
-    ),
-    safeFetch(
-      'findAuctions',
-      () =>
-        SubgraphSDK.connect(chainId).findAuctions({
-          where: { dao: tokenAddressLc },
-          orderBy: Auction_OrderBy.EndTime,
-          orderDirection: OrderDirection.Desc,
-          first: 1,
-        }),
-      { auctions: [] } as Awaited<
-        ReturnType<ReturnType<typeof SubgraphSDK.connect>['findAuctions']>
-      >
-    ),
-    safeFetch(
-      'totalAuctionSales',
-      () =>
-        SubgraphSDK.connect(chainId).totalAuctionSales({
-          tokenAddress: tokenAddressLc,
-        }),
-      { dao: null } as Awaited<
-        ReturnType<
-          ReturnType<typeof SubgraphSDK.connect>['totalAuctionSales']
+  const [daoInfo, auctionsResp, salesResp, proposalsResp, historyResp, treasuryWei] =
+    await Promise.all([
+      safeFetch(
+        'daoInfo',
+        () => SubgraphSDK.connect(chainId).daoInfo({ tokenAddress: tokenAddressLc }),
+        { dao: null } as Awaited<
+          ReturnType<ReturnType<typeof SubgraphSDK.connect>['daoInfo']>
         >
-      >
-    ),
-    safeFetch('proposals', () => getProposals(chainId, tokenAddressLc, 6, 0), {
-      proposals: [] as Proposal[],
-    }),
-    safeFetch(
-      'auctionHistory',
-      () =>
-        SubgraphSDK.connect(chainId).auctionHistory({
-          daoId: tokenAddressLc,
-          startTime: BigInt(oneYearAgo).toString() as unknown as bigint,
-          orderBy: Auction_OrderBy.EndTime,
-          orderDirection: OrderDirection.Desc,
-          first: 1000,
-        }),
-      { dao: null } as Awaited<
-        ReturnType<
-          ReturnType<typeof SubgraphSDK.connect>['auctionHistory']
+      ),
+      safeFetch(
+        'findAuctions',
+        () =>
+          SubgraphSDK.connect(chainId).findAuctions({
+            where: { dao: tokenAddressLc },
+            orderBy: Auction_OrderBy.EndTime,
+            orderDirection: OrderDirection.Desc,
+            first: 1,
+          }),
+        { auctions: [] } as Awaited<
+          ReturnType<ReturnType<typeof SubgraphSDK.connect>['findAuctions']>
         >
-      >
-    ),
-    safeFetch(
-      'treasuryBalance',
-      async () => {
-        if (!publicClient) return BigInt(0)
-        return publicClient.getBalance({
-          address: daoConfig.addresses.treasury as `0x${string}`,
-        })
-      },
-      BigInt(0)
-    ),
-  ])
+      ),
+      safeFetch(
+        'totalAuctionSales',
+        () =>
+          SubgraphSDK.connect(chainId).totalAuctionSales({
+            tokenAddress: tokenAddressLc,
+          }),
+        { dao: null } as Awaited<
+          ReturnType<ReturnType<typeof SubgraphSDK.connect>['totalAuctionSales']>
+        >
+      ),
+      safeFetch('proposals', () => getProposals(chainId, tokenAddressLc, 6, 0), {
+        proposals: [] as Proposal[],
+      }),
+      safeFetch(
+        'auctionHistory',
+        () =>
+          SubgraphSDK.connect(chainId).auctionHistory({
+            daoId: tokenAddressLc,
+            startTime: BigInt(oneYearAgo).toString() as unknown as bigint,
+            orderBy: Auction_OrderBy.EndTime,
+            orderDirection: OrderDirection.Desc,
+            first: 1000,
+          }),
+        { dao: null } as Awaited<
+          ReturnType<ReturnType<typeof SubgraphSDK.connect>['auctionHistory']>
+        >
+      ),
+      safeFetch(
+        'treasuryBalance',
+        async () => {
+          if (!publicClient) return BigInt(0)
+          return publicClient.getBalance({
+            address: daoConfig.addresses.treasury as `0x${string}`,
+          })
+        },
+        BigInt(0)
+      ),
+    ])
 
   const totalSupply = daoInfo?.dao?.totalSupply ?? 0
   const ownerCount = daoInfo?.dao?.ownerCount ?? 0
@@ -237,15 +230,13 @@ export async function getDashboardData(): Promise<DashboardData> {
         name: a.token.name,
         image: a.token.image ?? null,
         endTimeUnix: Number(a.endTime),
-        topBidEth: a.highestBid
-          ? formatEther(BigInt(a.highestBid.amount))
-          : null,
+        topBidEth: a.highestBid ? formatEther(BigInt(a.highestBid.amount)) : null,
         bidderShort: a.highestBid ? short(a.highestBid.bidder) : null,
       }
     : null
 
-  const recentProposals: ProposalSummary[] = proposalsResp.proposals.map(
-    (p) => formatProposal(p)
+  const recentProposals: ProposalSummary[] = proposalsResp.proposals.map((p) =>
+    formatProposal(p)
   )
 
   const auctionRevenueByMonth = bucketAuctionRevenueByMonth(
@@ -289,25 +280,21 @@ async function buildRecentActivity(
   // — each new bid must exceed the previous). Unknown gap, so label as
   // "recent" rather than minute-precise.
   // getBids returns amount as ETH-formatted strings, not wei.
-  const bidEvents: DashboardActivityItem[] = (bidsRaw ?? [])
-    .slice(0, 4)
-    .map((b, i) => ({
-      type: 'bid' as const,
-      who: short(b.bidder),
-      what: `bid ${trimDec(String(b.amount), 4)} ETH on #${currentTokenId}`,
-      timeAgo: i === 0 ? 'just now' : 'recent',
-      href: `/auction/${currentTokenId}`,
-    }))
+  const bidEvents: DashboardActivityItem[] = (bidsRaw ?? []).slice(0, 4).map((b, i) => ({
+    type: 'bid' as const,
+    who: short(b.bidder),
+    what: `bid ${trimDec(String(b.amount), 4)} ETH on #${currentTokenId}`,
+    timeAgo: i === 0 ? 'just now' : 'recent',
+    href: `/auction/${currentTokenId}`,
+  }))
 
-  const propEvents: DashboardActivityItem[] = proposals
-    .slice(0, 4)
-    .map((p) => ({
-      type: 'prop' as const,
-      who: short(p.proposer),
-      what: `created proposal #${p.proposalNumber}`,
-      timeAgo: relativeTimeAgo(Number(p.timeCreated) * 1000),
-      href: `/proposals/${Number(p.proposalNumber)}`,
-    }))
+  const propEvents: DashboardActivityItem[] = proposals.slice(0, 4).map((p) => ({
+    type: 'prop' as const,
+    who: short(p.proposer),
+    what: `created proposal #${p.proposalNumber}`,
+    timeAgo: relativeTimeAgo(Number(p.timeCreated) * 1000),
+    href: `/proposals/${Number(p.proposalNumber)}`,
+  }))
 
   // Naive interleave: take the freshest 5 across both sources.
   return [...bidEvents, ...propEvents].slice(0, 5)
@@ -385,8 +372,7 @@ function bucketAuctionRevenueByMonth(
     if (!a.settled || !a.winningBid) continue
     const d = new Date(Number(a.endTime) * 1000)
     const monthsAgo =
-      (now.getFullYear() - d.getFullYear()) * 12 +
-      (now.getMonth() - d.getMonth())
+      (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth())
     if (monthsAgo < 0 || monthsAgo > 11) continue
     const idx = 11 - monthsAgo
     const eth = Number(formatEther(BigInt((a.winningBid.amount as string) ?? '0')))
@@ -463,9 +449,7 @@ export async function getTreasuryPageData(): Promise<TreasuryPageData> {
           tokenAddress: tokenAddressLc,
         }),
       { dao: null } as Awaited<
-        ReturnType<
-          ReturnType<typeof SubgraphSDK.connect>['totalAuctionSales']
-        >
+        ReturnType<ReturnType<typeof SubgraphSDK.connect>['totalAuctionSales']>
       >
     ),
     safeFetch(
@@ -479,9 +463,7 @@ export async function getTreasuryPageData(): Promise<TreasuryPageData> {
           first: 1000,
         }),
       { dao: null } as Awaited<
-        ReturnType<
-          ReturnType<typeof SubgraphSDK.connect>['auctionHistory']
-        >
+        ReturnType<ReturnType<typeof SubgraphSDK.connect>['auctionHistory']>
       >
     ),
     safeFetch(
@@ -605,9 +587,7 @@ async function fetchTreasuryTokenHoldings(
     .map((t, i) => {
       const r = result[i]
       const raw =
-        r?.status === 'success' && typeof r.result === 'bigint'
-          ? r.result
-          : BigInt(0)
+        r?.status === 'success' && typeof r.result === 'bigint' ? r.result : BigInt(0)
       const display = formatTokenAmount(raw, t.decimals)
       return {
         symbol: t.symbol,
@@ -637,16 +617,13 @@ function formatTokenAmount(value: bigint, decimals: number): string {
     : whole.toLocaleString('en-US')
 }
 
-function bucketProposalsByMonth(
-  proposals: Array<{ timeCreated: unknown }>
-): number[] {
+function bucketProposalsByMonth(proposals: Array<{ timeCreated: unknown }>): number[] {
   const buckets = new Array<number>(12).fill(0)
   const now = new Date()
   for (const p of proposals) {
     const d = new Date(Number(p.timeCreated) * 1000)
     const monthsAgo =
-      (now.getFullYear() - d.getFullYear()) * 12 +
-      (now.getMonth() - d.getMonth())
+      (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth())
     if (monthsAgo < 0 || monthsAgo > 11) continue
     buckets[11 - monthsAgo] += 1
   }
@@ -735,7 +712,10 @@ export async function getProposalByNumber(
   // builder packs each call as 0x-prefixed hex, separated by ":".
   const splitCalldatas = (raw: string | null | undefined): string[] => {
     if (!raw) return []
-    return raw.split(':').filter(Boolean).map((c) => (c.startsWith('0x') ? c : `0x${c}`))
+    return raw
+      .split(':')
+      .filter(Boolean)
+      .map((c) => (c.startsWith('0x') ? c : `0x${c}`))
   }
   const calldatasArr = splitCalldatas(fragment.calldatas)
   const targetsArr = fragment.targets ?? []
@@ -759,9 +739,7 @@ export async function getProposalByNumber(
       valueEth: formatEther(valueWei),
       calldata,
       calldataPreview:
-        calldata && calldata.length > 14
-          ? `${calldata.slice(0, 10)}…`
-          : calldata,
+        calldata && calldata.length > 14 ? `${calldata.slice(0, 10)}…` : calldata,
     }
   })
 
@@ -798,8 +776,7 @@ export async function getAboutPageData(): Promise<AboutPageData> {
   const [info, treasuryWei, founders] = await Promise.all([
     safeFetch(
       'aboutPage.daoInfo',
-      () =>
-        SubgraphSDK.connect(chainId).daoInfo({ tokenAddress: tokenAddressLc }),
+      () => SubgraphSDK.connect(chainId).daoInfo({ tokenAddress: tokenAddressLc }),
       { dao: null } as Awaited<
         ReturnType<ReturnType<typeof SubgraphSDK.connect>['daoInfo']>
       >
@@ -877,9 +854,7 @@ export async function getMembersPageData(): Promise<MembersPageData> {
           first: 1000,
         }),
       { daotokenOwners: [] } as Awaited<
-        ReturnType<
-          ReturnType<typeof SubgraphSDK.connect>['daoMembersList']
-        >
+        ReturnType<ReturnType<typeof SubgraphSDK.connect>['daoMembersList']>
       >
     ),
     safeFetch(
@@ -904,17 +879,12 @@ export async function getMembersPageData(): Promise<MembersPageData> {
   }
 
   const owners = ownersResp.daotokenOwners
-  const totalTokens = owners.reduce(
-    (s, o) => s + (o.daoTokenCount ?? 0),
-    0
-  )
+  const totalTokens = owners.reduce((s, o) => s + (o.daoTokenCount ?? 0), 0)
 
   // Resolve ENS names for the top members. Capped + per-call timeout so the
   // page still renders quickly when only a public mainnet RPC is available.
   const ENS_RESOLVE_LIMIT = 20
-  const topAddresses = owners
-    .slice(0, ENS_RESOLVE_LIMIT)
-    .map((o) => String(o.owner))
+  const topAddresses = owners.slice(0, ENS_RESOLVE_LIMIT).map((o) => String(o.owner))
   const ensMap = await resolveEnsNames(topAddresses)
 
   const members: MemberRow[] = owners.map((o) => {
@@ -962,9 +932,7 @@ const ENS_LOOKUP_TIMEOUT_MS = 6000
  * Each address that doesn't have an ENS, or whose lookup times out, is
  * silently dropped from the result map.
  */
-async function resolveEnsNames(
-  addresses: string[]
-): Promise<Map<string, string>> {
+async function resolveEnsNames(addresses: string[]): Promise<Map<string, string>> {
   const out = new Map<string, string>()
   if (addresses.length === 0) return out
   if (!process.env.NEXT_PUBLIC_ALCHEMY_API_KEY) return out
@@ -1033,13 +1001,13 @@ export type AuctionPageData = {
   prevTokenId: number | null
   nextTokenId: number | null
   isLatest: boolean
+  nowUnixSec: number
 }
 
-export async function getAuctionPageData(
-  tokenId: number
-): Promise<AuctionPageData> {
+export async function getAuctionPageData(tokenId: number): Promise<AuctionPageData> {
   const tokenIdStr = String(tokenId)
   const tokenIdBig = BigInt(tokenId).toString() as unknown as bigint
+  const nowUnixSec = Math.floor(Date.now() / 1000)
 
   const [auctionsResp, bidsResp, prevNextResp] = await Promise.all([
     safeFetch(
@@ -1068,16 +1036,12 @@ export async function getAuctionPageData(
           tokenId: tokenIdBig,
         }),
       { prev: [], next: [], latest: [] } as Awaited<
-        ReturnType<
-          ReturnType<typeof SubgraphSDK.connect>['daoNextAndPreviousTokens']
-        >
+        ReturnType<ReturnType<typeof SubgraphSDK.connect>['daoNextAndPreviousTokens']>
       >
     ),
   ])
 
-  const auction = auctionsResp.auctions.find(
-    (a) => Number(a.token.tokenId) === tokenId
-  )
+  const auction = auctionsResp.auctions.find((a) => Number(a.token.tokenId) === tokenId)
 
   // Note: getBids() returns ETH-formatted amount strings (e.g. "0.0005"),
   // not wei. Don't pass through formatEther() — pass through as-is.
@@ -1088,12 +1052,8 @@ export async function getAuctionPageData(
     bidderShort: short(b.bidder),
   }))
 
-  const prevTokenId = prevNextResp.prev?.[0]
-    ? Number(prevNextResp.prev[0].tokenId)
-    : null
-  const nextTokenId = prevNextResp.next?.[0]
-    ? Number(prevNextResp.next[0].tokenId)
-    : null
+  const prevTokenId = prevNextResp.prev?.[0] ? Number(prevNextResp.prev[0].tokenId) : null
+  const nextTokenId = prevNextResp.next?.[0] ? Number(prevNextResp.next[0].tokenId) : null
   const latestId = prevNextResp.latest?.[0]
     ? Number(prevNextResp.latest[0].tokenId)
     : null
@@ -1115,6 +1075,7 @@ export async function getAuctionPageData(
       prevTokenId,
       nextTokenId,
       isLatest,
+      nowUnixSec,
     }
   }
 
@@ -1124,13 +1085,12 @@ export async function getAuctionPageData(
     name: auction.token.name,
     image: auction.token.image ?? null,
     endTimeUnix: Number(auction.endTime),
-    topBidEth: auction.highestBid
-      ? formatEther(BigInt(auction.highestBid.amount))
-      : null,
+    topBidEth: auction.highestBid ? formatEther(BigInt(auction.highestBid.amount)) : null,
     bidderShort: auction.highestBid ? short(auction.highestBid.bidder) : null,
     bids,
     prevTokenId,
     nextTokenId,
     isLatest,
+    nowUnixSec,
   }
 }

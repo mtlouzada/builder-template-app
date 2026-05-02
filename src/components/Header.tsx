@@ -2,10 +2,10 @@
 
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Menu, Moon, Sun, X } from 'lucide-react'
-import { useTheme } from 'next-themes'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useTheme } from 'next-themes'
+import { useState, useSyncExternalStore } from 'react'
 
 import { DaoAvatar } from '@/components/DaoAvatar'
 import { daoConfig } from '@/lib/dao.config'
@@ -35,15 +35,19 @@ const NAV_ITEMS = [
   { href: '/about', label: 'About', match: (p: string) => p === '/about' },
 ]
 
+const subscribeMounted = () => () => {}
+const getMountedSnapshot = () => true
+const getMountedServerSnapshot = () => false
+
 export function Header() {
   const pathname = usePathname() ?? '/'
   const [mobileOpen, setMobileOpen] = useState(false)
   const { resolvedTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const mounted = useSyncExternalStore(
+    subscribeMounted,
+    getMountedSnapshot,
+    getMountedServerSnapshot
+  )
 
   const chainName = CHAIN_NAMES[daoConfig.chainId] ?? `Chain ${daoConfig.chainId}`
 
@@ -70,9 +74,7 @@ export function Header() {
                 href={item.href}
                 className={cn(
                   'relative rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  active
-                    ? 'text-fg'
-                    : 'text-muted-fg hover:bg-surface-2 hover:text-fg'
+                  active ? 'text-fg' : 'text-muted-fg hover:bg-surface-2 hover:text-fg'
                 )}
               >
                 {item.label}

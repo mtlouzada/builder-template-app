@@ -3,9 +3,4 @@
  */
 
 /** The 5-state palette the UI cards use to style proposals. */
-export type ProposalStatus =
-  | 'active'
-  | 'pending'
-  | 'executed'
-  | 'defeated'
-  | 'cancelled'
+export type ProposalStatus = 'active' | 'pending' | 'executed' | 'defeated' | 'cancelled'

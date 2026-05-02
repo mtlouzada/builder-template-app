@@ -48,15 +48,8 @@ export function AnalyticsBarChart({
   return (
     <div className="w-full" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <RechartsBarChart
-          data={data}
-          margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-        >
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="var(--border)"
-            vertical={false}
-          />
+        <RechartsBarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
           <XAxis
             dataKey="label"
             stroke="var(--muted-fg)"
@@ -75,11 +68,7 @@ export function AnalyticsBarChart({
           <Tooltip
             cursor={{ fill: 'var(--surface-2)' }}
             content={(props: TooltipProps<number, string>) => (
-              <ChartTooltip
-                {...props}
-                valueSuffix={valueSuffix}
-                precision={precision}
-              />
+              <ChartTooltip {...props} valueSuffix={valueSuffix} precision={precision} />
             )}
           />
           <Bar

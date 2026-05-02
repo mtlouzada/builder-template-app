@@ -29,7 +29,13 @@ export function ogColors() {
 
 function hexToRgba(hex: string, alpha: number): string {
   const m = hex.replace('#', '')
-  const expand = m.length === 3 ? m.split('').map((c) => c + c).join('') : m
+  const expand =
+    m.length === 3
+      ? m
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : m
   const r = parseInt(expand.slice(0, 2), 16)
   const g = parseInt(expand.slice(2, 4), 16)
   const b = parseInt(expand.slice(4, 6), 16)

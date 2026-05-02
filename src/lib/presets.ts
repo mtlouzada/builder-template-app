@@ -60,4 +60,7 @@ export const PRESETS: Record<string, DaoPreset> = {
 /** Presets that can be passed to `pnpm switch-dao` (have a real token). */
 export const SWITCHABLE_PRESETS = Object.fromEntries(
   Object.entries(PRESETS).filter(([, p]) => !!p.tokenAddress)
-) as Record<string, DaoPreset & { chain: NonNullable<DaoPreset['chain']>; tokenAddress: string }>
+) as Record<
+  string,
+  DaoPreset & { chain: NonNullable<DaoPreset['chain']>; tokenAddress: string }
+>

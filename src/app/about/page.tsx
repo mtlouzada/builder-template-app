@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
-import { DaoAvatar } from '@/components/DaoAvatar'
 import { AddressChip } from '@/components/dao/AddressChip'
+import { DaoAvatar } from '@/components/DaoAvatar'
 import { daoConfig } from '@/lib/dao.config'
 import { getAboutPageData } from '@/lib/dao-data'
 
@@ -60,9 +60,7 @@ export default async function AboutPage() {
       </section>
 
       <section className="rounded-xl border border-border bg-surface px-6 py-[22px]">
-        <h2 className="mb-3 text-xl font-bold tracking-tight">
-          About {daoConfig.name}
-        </h2>
+        <h2 className="mb-3 text-xl font-bold tracking-tight">About {daoConfig.name}</h2>
         {/* Mission copy is per-fork — replace with your DAO's mission text. */}
         <p className="mb-3 text-fg-2">{daoConfig.tagline}</p>
         <p className="text-fg-2">
@@ -123,15 +121,7 @@ function KvBlock({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-function FounderCard({
-  addr,
-  share,
-  hue,
-}: {
-  addr: string
-  share: string
-  hue: number
-}) {
+function FounderCard({ addr, share, hue }: { addr: string; share: string; hue: number }) {
   return (
     <div className="flex items-center gap-3 rounded-md bg-surface-2 px-4 py-3.5">
       <span
