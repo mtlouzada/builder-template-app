@@ -16,6 +16,8 @@ type Props = {
   /** Fallback accent color used when no image is available. */
   fallbackColor: string
   className?: string
+  /** Eager-load the image. Use for avatars rendered above the fold. */
+  priority?: boolean
 }
 
 /**
@@ -23,7 +25,14 @@ type Props = {
  * stripes SVG (DaoLogo) when no image is set on the contract or when the
  * gateway request fails.
  */
-export function DaoAvatar({ image, size = 28, alt, fallbackColor, className }: Props) {
+export function DaoAvatar({
+  image,
+  size = 28,
+  alt,
+  fallbackColor,
+  className,
+  priority,
+}: Props) {
   const [errored, setErrored] = useState(false)
   const url = resolveImageUrl(image)
   const showImage = !!url && !errored
@@ -45,6 +54,7 @@ export function DaoAvatar({ image, size = 28, alt, fallbackColor, className }: P
           className="h-full w-full object-cover"
           onError={() => setErrored(true)}
           unoptimized={!url.startsWith('https://gateway.pinata.cloud/')}
+          priority={priority}
         />
       ) : (
         <DaoLogo style="stripes" color={fallbackColor} size={size} />

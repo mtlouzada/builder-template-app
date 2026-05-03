@@ -40,6 +40,7 @@ export default async function AboutPage() {
             alt={daoConfig.name}
             fallbackColor={daoConfig.theme.accent}
             size={48}
+            priority
           />
           <div>
             <h1 className="font-display text-[28px] font-bold leading-tight tracking-tight">

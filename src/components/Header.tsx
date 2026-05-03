@@ -62,6 +62,7 @@ export function Header() {
             alt={daoConfig.name}
             fallbackColor={daoConfig.theme.accent}
             size={28}
+            priority
           />
           <span className="font-display tracking-tight">{daoConfig.name}</span>
           <ChainPill chainName={chainName} />
