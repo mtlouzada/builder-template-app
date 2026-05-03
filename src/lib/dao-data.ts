@@ -37,17 +37,33 @@ const mainnetClient = createPublicClient({
   transport: transports[1] ?? http(),
 })
 
+function isRateLimited(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err)
+  if (msg.includes('429') || /rate.?limit/i.test(msg)) return true
+  const status = (err as { response?: { status?: number } })?.response?.status
+  return status === 429
+}
+
 async function safeFetch<T>(
   label: string,
   fn: () => Promise<T>,
   fallback: T
 ): Promise<T> {
-  try {
-    return await fn()
-  } catch (e) {
-    console.error(`[dao-data] ${label} failed:`, e)
-    return fallback
+  const maxAttempts = 3
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn()
+    } catch (e) {
+      if (attempt < maxAttempts && isRateLimited(e)) {
+        const backoff = 500 * 2 ** (attempt - 1) + Math.floor(Math.random() * 250)
+        await new Promise((r) => setTimeout(r, backoff))
+        continue
+      }
+      console.error(`[dao-data] ${label} failed:`, e)
+      return fallback
+    }
   }
+  return fallback
 }
 
 /**

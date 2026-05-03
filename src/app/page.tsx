@@ -11,8 +11,8 @@ import { daoConfig, fallbackArtPalette } from '@/lib/dao.config'
 import { getDashboardData } from '@/lib/dao-data'
 import { formatEth } from '@/lib/utils'
 
-// Re-fetch every 60s on the server.
-export const revalidate = 60
+// Re-fetch every 5min on the server. Subgraph free tier rate-limits aggressively.
+export const revalidate = 300
 
 export default async function Dashboard() {
   const data = await getDashboardData()
