@@ -13,7 +13,7 @@ import {
 } from '@buildeross/sdk/subgraph'
 import { ProposalState } from '@buildeross/types'
 import { transports } from '@buildeross/utils/wagmi'
-import { createPublicClient, formatEther } from 'viem'
+import { createPublicClient, formatEther, http } from 'viem'
 import { mainnet } from 'viem/chains'
 
 import { daoConfig } from './dao.config'
@@ -31,9 +31,10 @@ const publicClient = chain
   : null
 
 // ENS resolves on Ethereum mainnet regardless of which chain the DAO lives on.
+// Uses public transport so ENS works without an Alchemy key configured.
 const mainnetClient = createPublicClient({
   chain: mainnet,
-  transport: transports[1] ?? transports[8453],
+  transport: transports[1] ?? http(),
 })
 
 async function safeFetch<T>(
@@ -905,7 +906,6 @@ const ENS_LOOKUP_TIMEOUT_MS = 6000
 async function resolveEnsNames(addresses: string[]): Promise<Map<string, string>> {
   const out = new Map<string, string>()
   if (addresses.length === 0) return out
-  if (!process.env.NEXT_PUBLIC_ALCHEMY_API_KEY) return out
   const settled = await Promise.allSettled(
     addresses.map((a) =>
       withTimeout(
