@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { cn, resolveIpfs } from '@/lib/utils'
 
 import { AuctionArt } from './AuctionArt'
+import { SettleAuctionAction } from './SettleAuctionAction'
 
 type Auction = {
   tokenId: number
@@ -176,18 +177,28 @@ export function AuctionHero({ auction, palette, tokenLabel }: Props) {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Button asChild size="lg" className="w-full text-base">
-                <Link href={`/auction/${auction.tokenId}`}>
-                  {ended ? 'View settled auction' : 'Place a bid'}
-                </Link>
-              </Button>
-              {!ended && (
-                <Link
-                  href={`/auction/${auction.tokenId}`}
-                  className="text-center text-sm font-medium text-muted-fg transition-colors hover:text-fg"
-                >
-                  View auction details →
-                </Link>
+              {ended ? (
+                <>
+                  <SettleAuctionAction tokenId={auction.tokenId} />
+                  <Link
+                    href={`/auction/${auction.tokenId}`}
+                    className="text-center text-sm font-medium text-muted-fg transition-colors hover:text-fg"
+                  >
+                    View auction →
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Button asChild size="lg" className="w-full text-base">
+                    <Link href={`/auction/${auction.tokenId}`}>Place a bid</Link>
+                  </Button>
+                  <Link
+                    href={`/auction/${auction.tokenId}`}
+                    className="text-center text-sm font-medium text-muted-fg transition-colors hover:text-fg"
+                  >
+                    View auction details →
+                  </Link>
+                </>
               )}
             </div>
           </div>
