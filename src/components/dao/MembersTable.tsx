@@ -3,11 +3,16 @@
 import { Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
+import { ActiveBadge } from '@/components/dao/ActiveBadge'
+import { WalletPill } from '@/components/dao/WalletPill'
 import { Button } from '@/components/ui/button'
 
 export type MembersTableRow = {
   ens: string | null
+  /** Truncated address, displayed in the table cell. */
   addr: string
+  /** Full 0x address, used to link to /members/[address]. */
+  addrFull: string
   votes: number
   pct: number
   joined: string
@@ -91,21 +96,10 @@ export function MembersTable({ members, totalMembers, activeMembers }: Props) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((m, i) => (
-              <tr key={m.addr} className="hover:bg-surface-2">
+            {filtered.map((m) => (
+              <tr key={m.addrFull} className="hover:bg-surface-2">
                 <Td>
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="h-7 w-7 shrink-0 rounded-full"
-                      style={{ background: `oklch(0.7 0.15 ${(i * 50) % 360})` }}
-                    />
-                    <div>
-                      <div>
-                        <strong className="font-semibold">{m.ens ?? '—'}</strong>
-                      </div>
-                      <div className="font-mono text-xs text-muted-fg">{m.addr}</div>
-                    </div>
-                  </div>
+                  <WalletPill address={m.addrFull} ens={m.ens} showAvatar size="md" />
                 </Td>
                 <Td>
                   <strong className="font-semibold">{m.votes}</strong>
@@ -113,14 +107,7 @@ export function MembersTable({ members, totalMembers, activeMembers }: Props) {
                 <Td>{m.pct}%</Td>
                 <Td muted>{m.joined}</Td>
                 <Td>
-                  <span
-                    className={
-                      m.active
-                        ? 'inline-block h-2 w-2 rounded-full bg-success shadow-[0_0_0_3px] shadow-success/25'
-                        : 'inline-block h-2 w-2 rounded-full bg-surface-3'
-                    }
-                    title={m.active ? 'Active' : 'Dormant'}
-                  />
+                  <ActiveBadge active={m.active} />
                 </Td>
               </tr>
             ))}
