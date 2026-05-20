@@ -1,6 +1,6 @@
 'use client'
 
-import { Coins, Send, Settings2 } from 'lucide-react'
+import { Coins, GitFork, Send, Settings2 } from 'lucide-react'
 
 import type { TxKind } from '@/lib/proposal-tx'
 import { cn } from '@/lib/utils'
@@ -31,6 +31,12 @@ const KIND_META: Record<
     label: 'Custom call',
     description: 'Hand-rolled target, value, and calldata for any contract call.',
     iconClass: 'bg-muted-fg/15 text-muted-fg',
+  },
+  split: {
+    icon: GitFork,
+    label: 'Revenue Split',
+    description: 'Route ETH to multiple recipients via an immutable 0xSplits contract.',
+    iconClass: 'bg-purple-500/15 text-purple-500',
   },
 }
 

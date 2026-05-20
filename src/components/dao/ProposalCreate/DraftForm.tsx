@@ -1,8 +1,10 @@
 'use client'
 
+import { CheckCircle2, Loader2 } from 'lucide-react'
 import { isAddress } from 'viem'
 
 import { Button } from '@/components/ui/button'
+import { useSplitCreation } from '@/hooks/use-split-creation'
 import { daoConfig } from '@/lib/dao.config'
 import {
   tokenKey,
@@ -10,9 +12,13 @@ import {
   type TokenMetaMap,
   TX_KIND_LABELS,
   type TxDraft,
+  type TxDraftSplit,
   validateDraft,
 } from '@/lib/proposal-tx'
 import { isHex } from '@/lib/proposal-validation'
+import { validateSplitRecipients } from '@/lib/splits-utils'
+
+import { SplitRecipientsSection } from './SplitRecipientsSection'
 
 type Props = {
   draft: TxDraft
@@ -54,6 +60,7 @@ export function DraftForm({
         <Erc20Fields draft={draft} onChange={onChange} tokenMeta={tokenMeta} />
       )}
       {draft.kind === 'custom' && <CustomFields draft={draft} onChange={onChange} />}
+      {draft.kind === 'split' && <SplitFields draft={draft} onChange={onChange} />}
 
       {errors.length > 0 && (
         <ul className="list-disc pl-5 text-[12.5px] text-warning">
@@ -235,6 +242,101 @@ function CustomFields({
           onChange={(e) => onChange({ ...draft, calldata: e.target.value })}
           placeholder="0x"
           className={textInputClass(!!draft.calldata && !isHex(draft.calldata))}
+        />
+      </Field>
+    </div>
+  )
+}
+
+function SplitFields({
+  draft,
+  onChange,
+}: {
+  draft: TxDraftSplit
+  onChange: (next: TxDraft) => void
+}) {
+  const { createSplit, isPending, isSuccess, splitAddress, txHash, error, reset } =
+    useSplitCreation()
+
+  const recipientErrors = validateSplitRecipients(draft.recipients)
+  const canDeploy = recipientErrors.length === 0 && draft.recipients.length >= 2
+  const deployed = isSuccess && !!splitAddress
+
+  const handleDeploy = async () => {
+    const addr = await createSplit({
+      recipients: draft.recipients,
+      distributorFeePercent: draft.distributorFeePercent,
+    })
+    if (addr) onChange({ ...draft, splitAddress: addr })
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <SplitRecipientsSection
+        recipients={draft.recipients}
+        distributorFeePercent={draft.distributorFeePercent}
+        onChange={(recipients, distributorFeePercent) =>
+          onChange({ ...draft, recipients, distributorFeePercent, splitAddress: '' })
+        }
+      />
+
+      {/* Deploy split contract */}
+      {!deployed ? (
+        <div className="flex flex-col gap-2">
+          <div className="text-[12.5px] text-muted-fg">
+            Deploy an immutable 0xSplits contract on-chain before adding this transaction to
+            the proposal queue.
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleDeploy}
+            disabled={!canDeploy || isPending}
+            className="self-start"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                Deploying…
+              </>
+            ) : (
+              'Deploy Split Contract'
+            )}
+          </Button>
+          {error && <p className="text-[12.5px] text-warning">{error.message}</p>}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2 rounded-md border border-success/30 bg-success/5 p-3 text-[12.5px]">
+          <div className="flex items-center gap-1.5 font-semibold text-success">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Split deployed
+          </div>
+          <div className="font-mono text-[11px] text-muted-fg break-all">{splitAddress}</div>
+          {txHash && (
+            <a
+              href={`https://splits.org/accounts/${splitAddress}/?chainId=${daoConfig.chainId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent hover:underline"
+            >
+              View on splits.org ↗
+            </a>
+          )}
+          <button type="button" onClick={reset} className="self-start text-muted-fg hover:text-fg underline">
+            Reconfigure
+          </button>
+        </div>
+      )}
+
+      {/* ETH amount to send */}
+      <Field label="ETH to send to split">
+        <input
+          type="text"
+          inputMode="decimal"
+          value={draft.valueEth}
+          onChange={(e) => onChange({ ...draft, valueEth: e.target.value })}
+          placeholder="0"
+          className={textInputClass(false)}
         />
       </Field>
     </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { Coins, Pencil, Send, Settings2, Trash2 } from 'lucide-react'
+import { Coins, GitFork, Pencil, Send, Settings2, Trash2 } from 'lucide-react'
 
 import { WalletPill } from '@/components/dao/WalletPill'
 import { daoConfig } from '@/lib/dao.config'
@@ -23,12 +23,14 @@ const KIND_ICON = {
   eth: Send,
   erc20: Coins,
   custom: Settings2,
+  split: GitFork,
 } as const
 
 const KIND_ICON_CLASS = {
   eth: 'bg-accent/15 text-accent-strong',
   erc20: 'bg-success/15 text-success',
   custom: 'bg-muted-fg/15 text-muted-fg',
+  split: 'bg-purple-500/15 text-purple-500',
 } as const
 
 export function SummaryCard({ draft, index, tokenMeta, onEdit, onRemove }: Props) {
@@ -120,6 +122,23 @@ function DraftSummary({ draft, tokenMeta }: { draft: TxDraft; tokenMeta: TokenMe
               chainId={daoConfig.chainId}
             />
           </>
+        )}
+      </div>
+    )
+  }
+  if (draft.kind === 'split') {
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 text-[12.5px]">
+        <span className="font-semibold text-fg">{formatNumber(draft.valueEth) || '0'} ETH</span>
+        <span className="text-muted-fg">split to</span>
+        <span className="text-fg font-semibold">{draft.recipients.length} recipients</span>
+        {draft.splitAddress ? (
+          <>
+            <span className="text-muted-fg">via</span>
+            <WalletPill address={draft.splitAddress} link={false} size="xs" showExplorer chainId={daoConfig.chainId} />
+          </>
+        ) : (
+          <span className="text-warning italic text-[11px]">(split not deployed)</span>
         )}
       </div>
     )

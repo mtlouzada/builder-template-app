@@ -13,6 +13,7 @@
     "switch-dao": "tsx scripts/switchDao.ts"
   },
   "dependencies": {
+    "@0xsplits/splits-sdk": "^6.5.0",
     "@buildeross/constants": "0.3.2",
     "@buildeross/hooks": "0.3.2",
     "@buildeross/ipfs-service": "0.3.2",

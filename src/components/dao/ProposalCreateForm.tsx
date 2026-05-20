@@ -38,7 +38,7 @@ import { SummaryCard } from './ProposalCreate/SummaryCard'
 import { TypeCard } from './ProposalCreate/TypeCard'
 import { type WizardStep, WizardTabs } from './ProposalCreate/WizardTabs'
 
-const KINDS: TxKind[] = ['eth', 'erc20', 'custom']
+const KINDS: TxKind[] = ['eth', 'erc20', 'custom', 'split']
 
 export function ProposalCreateForm() {
   const ready = useWeb3Ready()

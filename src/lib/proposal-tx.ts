@@ -9,8 +9,10 @@ import {
 
 import type { Tx } from '@/lib/proposal-validation'
 import { isHex } from '@/lib/proposal-validation'
+import type { SplitRecipient } from '@/lib/splits-utils'
+import { validateSplitRecipients } from '@/lib/splits-utils'
 
-export type TxKind = 'eth' | 'erc20' | 'custom'
+export type TxKind = 'eth' | 'erc20' | 'custom' | 'split'
 
 export type TxDraftEth = {
   kind: 'eth'
@@ -32,17 +34,29 @@ export type TxDraftCustom = {
   calldata: string
 }
 
-export type TxDraft = TxDraftEth | TxDraftErc20 | TxDraftCustom
+export type TxDraftSplit = {
+  kind: 'split'
+  /** Deployed split contract address (empty until the user deploys). */
+  splitAddress: string
+  recipients: SplitRecipient[]
+  distributorFeePercent: number
+  /** ETH amount to send to the split in the proposal. */
+  valueEth: string
+}
+
+export type TxDraft = TxDraftEth | TxDraftErc20 | TxDraftCustom | TxDraftSplit
 
 export const TX_KIND_LABELS: Record<TxKind, string> = {
   eth: 'Send ETH',
   erc20: 'Send ERC-20',
   custom: 'Custom call',
+  split: 'Revenue Split',
 }
 
 export function emptyDraft(kind: TxKind): TxDraft {
   if (kind === 'eth') return { kind: 'eth', recipient: '', valueEth: '0' }
   if (kind === 'erc20') return { kind: 'erc20', token: '', recipient: '', amount: '' }
+  if (kind === 'split') return { kind: 'split', splitAddress: '', recipients: [], distributorFeePercent: 0, valueEth: '0' }
   return { kind: 'custom', target: '', valueEth: '0', calldata: '0x' }
 }
 
@@ -91,6 +105,17 @@ export function validateDraft(draft: TxDraft, tokenMeta: TokenMetaMap): string[]
         }
       }
     }
+  } else if (draft.kind === 'split') {
+    const recipientErrors = validateSplitRecipients(draft.recipients)
+    errs.push(...recipientErrors.map((e) => e.message))
+    if (!draft.splitAddress || !isAddress(draft.splitAddress)) {
+      errs.push('Deploy the split contract before adding to queue.')
+    }
+    if (!draft.valueEth.trim() || !isFiniteNumber(draft.valueEth)) {
+      errs.push('ETH amount must be a number.')
+    } else {
+      try { parseEther(draft.valueEth) } catch { errs.push('ETH amount is not a valid value.') }
+    }
   } else {
     if (!draft.target || !isAddress(draft.target)) {
       errs.push('Target must be a valid address.')
@@ -117,6 +142,14 @@ export function encodeDraft(draft: TxDraft, tokenMeta: TokenMetaMap): Tx | null 
     if (!isAddress(draft.recipient)) return null
     return {
       target: getAddress(draft.recipient),
+      valueEth: draft.valueEth.trim() || '0',
+      calldata: '0x',
+    }
+  }
+  if (draft.kind === 'split') {
+    if (!isAddress(draft.splitAddress)) return null
+    return {
+      target: getAddress(draft.splitAddress),
       valueEth: draft.valueEth.trim() || '0',
       calldata: '0x',
     }
