@@ -9,8 +9,13 @@ import { Button } from '@/components/ui/button'
 import type { ProposalSummary } from '@/lib/dao-data'
 import type { ProposalStatus } from '@/lib/types'
 
-const STATUS_OPTIONS: Array<{ value: ProposalStatus | 'all'; label: string }> = [
-  { value: 'all', label: 'All statuses' },
+type StatusFilter = ProposalStatus | 'all' | 'hide-cancelled'
+
+const HIDDEN_BY_DEFAULT: ProposalStatus[] = ['cancelled', 'vetoed', 'expired']
+
+const STATUS_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
+  { value: 'hide-cancelled', label: 'All statuses' },
+  { value: 'all', label: 'Include cancelled' },
   { value: 'pending', label: 'Pending' },
   { value: 'active', label: 'Active' },
   { value: 'succeeded', label: 'Succeeded' },
@@ -24,14 +29,17 @@ const STATUS_OPTIONS: Array<{ value: ProposalStatus | 'all'; label: string }> = 
 
 export function ProposalsListView({ proposals }: { proposals: ProposalSummary[] }) {
   const [q, setQ] = useState('')
-  const [status, setStatus] = useState<ProposalStatus | 'all'>('all')
+  const [status, setStatus] = useState<StatusFilter>('hide-cancelled')
 
   const filtered = useMemo(() => {
     const ql = q.toLowerCase()
-    return proposals.filter(
-      (p) =>
-        (status === 'all' || p.status === status) && p.title.toLowerCase().includes(ql)
-    )
+    return proposals.filter((p) => {
+      const matchesStatus =
+        status === 'all' ||
+        (status === 'hide-cancelled' && !HIDDEN_BY_DEFAULT.includes(p.status)) ||
+        p.status === status
+      return matchesStatus && p.title.toLowerCase().includes(ql)
+    })
   }, [proposals, q, status])
 
   return (
@@ -66,7 +74,7 @@ export function ProposalsListView({ proposals }: { proposals: ProposalSummary[] 
         </div>
         <select
           value={status}
-          onChange={(e) => setStatus(e.target.value as ProposalStatus | 'all')}
+          onChange={(e) => setStatus(e.target.value as StatusFilter)}
           className="h-10 rounded-md border border-border bg-surface px-3.5 text-sm outline-none focus:border-accent"
         >
           {STATUS_OPTIONS.map((o) => (
