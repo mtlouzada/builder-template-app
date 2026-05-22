@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 
 import { AnalyticsBarChart } from '@/components/dao/AnalyticsBarChart'
 import { KpiCard } from '@/components/dao/KpiCard'
+import { TokenLogo } from '@/components/dao/TokenLogo'
 import { WalletPill } from '@/components/dao/WalletPill'
 import { daoConfig } from '@/lib/dao.config'
 import { getTreasuryPageData } from '@/lib/dao-data'
@@ -91,9 +92,7 @@ export default async function TreasuryPage() {
             <tr className="hover:bg-surface-2">
               <Td>
                 <div className="flex items-center gap-2.5">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-3 text-xs font-bold">
-                    Ξ
-                  </span>
+                  <TokenLogo symbol="ETH" chainId={daoConfig.chainId} />
                   Ether
                 </div>
               </Td>
@@ -105,9 +104,7 @@ export default async function TreasuryPage() {
               <tr key={t.address} className="hover:bg-surface-2">
                 <Td>
                   <div className="flex items-center gap-2.5">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-3 text-xs font-bold">
-                      {t.symbol.slice(0, 1)}
-                    </span>
+                    <TokenLogo address={t.address} symbol={t.symbol} chainId={daoConfig.chainId} />
                     {t.symbol}
                   </div>
                 </Td>
