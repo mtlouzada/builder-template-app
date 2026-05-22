@@ -62,7 +62,7 @@ export default async function AboutPage() {
 
       <section className="rounded-xl border border-border bg-surface px-6 py-[22px]">
         <h2 className="mb-3 text-xl font-bold tracking-tight">About {daoConfig.name}</h2>
-        <p className="text-fg-2">{daoConfig.tagline}</p>
+        <p className="text-fg-2">{data.description ?? daoConfig.tagline}</p>
       </section>
 
       <section className="rounded-xl border border-border bg-surface px-6 py-[22px]">

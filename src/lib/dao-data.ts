@@ -1044,6 +1044,7 @@ export type AboutPageData = {
   treasuryEth: string
   ownerCount: number
   totalSupply: number
+  description: string | null
   founders: AboutFounder[]
 }
 
@@ -1101,6 +1102,7 @@ export async function getAboutPageData(): Promise<AboutPageData> {
     treasuryEth: formatEther(treasuryWei),
     ownerCount: info?.dao?.ownerCount ?? 0,
     totalSupply: info?.dao?.totalSupply ?? 0,
+    description: info?.dao?.description ?? null,
     founders: foundersWithEns,
   }
 }

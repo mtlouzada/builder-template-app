@@ -1,5 +1,6 @@
 'use client'
 
+import { useEnsData } from '@buildeross/hooks'
 import { Check, Copy, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -11,11 +12,11 @@ type Size = 'xs' | 'sm' | 'md'
 type Props = {
   /** Full 0x address. */
   address: string
-  /** Reverse-resolved ENS or basename. Renders in place of the short addr. */
+  /** Server-resolved ENS or basename — takes priority over client resolution. */
   ens?: string | null
   /** Wraps the label in a Link to /members/[address]. Default true. */
   link?: boolean
-  /** Color-hashed avatar dot. */
+  /** Shows avatar circle with ENS image or color-hash fallback. */
   showAvatar?: boolean
   /** Inline copy-to-clipboard affordance. */
   showCopy?: boolean
@@ -30,21 +31,9 @@ type Props = {
 }
 
 const SIZE_PRESETS: Record<Size, { label: string; addr: string; avatar: string }> = {
-  xs: {
-    label: 'text-[12.5px]',
-    addr: 'text-[10.5px]',
-    avatar: 'h-4 w-4',
-  },
-  sm: {
-    label: 'text-[13px]',
-    addr: 'text-[11px]',
-    avatar: 'h-5 w-5',
-  },
-  md: {
-    label: 'text-sm',
-    addr: 'text-xs',
-    avatar: 'h-7 w-7',
-  },
+  xs: { label: 'text-[12.5px]', addr: 'text-[10.5px]', avatar: 'h-4 w-4' },
+  sm: { label: 'text-[13px]', addr: 'text-[11px]', avatar: 'h-5 w-5' },
+  md: { label: 'text-sm', addr: 'text-xs', avatar: 'h-7 w-7' },
 }
 
 export function WalletPill({
@@ -61,12 +50,51 @@ export function WalletPill({
 }: Props) {
   const [copied, setCopied] = useState(false)
   const preset = SIZE_PRESETS[size]
-  const labelText = ens ?? short(address)
+
+  // Client-side ENS/Basename resolution — server prop wins if already resolved
+  const { ensName, ensAvatar } = useEnsData(address)
+  const resolvedName = ens ?? ensName ?? null
+  const labelText = resolvedName ?? short(address)
+
   const labelClassName = cn(
     'font-semibold text-fg',
     preset.label,
-    ens ? 'font-semibold' : 'font-mono',
+    resolvedName ? 'font-semibold' : 'font-mono',
     link && 'group-hover:underline'
+  )
+
+  const avatar = showAvatar && (
+    <span
+      className={cn('relative shrink-0 overflow-hidden rounded-full', preset.avatar)}
+      style={{ background: avatarColor(address) }}
+      aria-hidden
+    >
+      {ensAvatar && (
+        <img
+          src={ensAvatar}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover"
+          onError={(e) => {
+            ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+          }}
+        />
+      )}
+    </span>
+  )
+
+  const inner = (
+    <span className="min-w-0 truncate">
+      <span className={labelClassName}>{labelText}</span>
+      {meta != null && (
+        <span className={cn('block truncate text-muted-fg', preset.addr)}>{meta}</span>
+      )}
+      {meta == null && resolvedName && (
+        <span className={cn('block truncate font-mono text-muted-fg', preset.addr)}>
+          {short(address)}
+        </span>
+      )}
+    </span>
   )
 
   const label = link ? (
@@ -74,45 +102,13 @@ export function WalletPill({
       href={`/members/${address.toLowerCase()}`}
       className="group inline-flex min-w-0 flex-1 items-center gap-1.5"
     >
-      {showAvatar && (
-        <span
-          className={cn('shrink-0 rounded-full', preset.avatar)}
-          style={{ background: avatarColor(address) }}
-          aria-hidden
-        />
-      )}
-      <span className="min-w-0 truncate">
-        <span className={labelClassName}>{labelText}</span>
-        {meta != null && (
-          <span className={cn('block truncate text-muted-fg', preset.addr)}>{meta}</span>
-        )}
-        {!meta && ens && (
-          <span className={cn('block truncate font-mono text-muted-fg', preset.addr)}>
-            {short(address)}
-          </span>
-        )}
-      </span>
+      {avatar}
+      {inner}
     </Link>
   ) : (
     <span className="inline-flex min-w-0 flex-1 items-center gap-1.5">
-      {showAvatar && (
-        <span
-          className={cn('shrink-0 rounded-full', preset.avatar)}
-          style={{ background: avatarColor(address) }}
-          aria-hidden
-        />
-      )}
-      <span className="min-w-0 truncate">
-        <span className={labelClassName}>{labelText}</span>
-        {meta != null && (
-          <span className={cn('block truncate text-muted-fg', preset.addr)}>{meta}</span>
-        )}
-        {!meta && ens && (
-          <span className={cn('block truncate font-mono text-muted-fg', preset.addr)}>
-            {short(address)}
-          </span>
-        )}
-      </span>
+      {avatar}
+      {inner}
     </span>
   )
 
@@ -137,11 +133,7 @@ export function WalletPill({
               aria-label="Copy address"
               title="Copy address"
             >
-              {copied ? (
-                <Check className="h-3.5 w-3.5" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
+              {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
             </button>
           )}
           {showExplorer && chainId && (
