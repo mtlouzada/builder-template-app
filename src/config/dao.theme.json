@@ -1,5 +1,6 @@
 {
-  "accent": "#f5d447",
-  "radius": 8,
-  "displayFont": "Londrina Solid"
+  "accent": "#2563eb",
+  "radius": 12,
+  "displayFont": "Geist",
+  "tagline": "Powering Onchain Communities."
 }
