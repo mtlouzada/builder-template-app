@@ -324,7 +324,7 @@ function TxCard({
               className="text-right font-mono font-semibold tabular-nums"
               style={{ color: tx.dir === 'in' ? '#5fd28a' : '#f06464' }}
             >
-              {tx.dir === 'in' ? '+' : '−'}{tx.amountEth} {tx.symbol}
+              {tx.dir === 'in' ? '+' : '−'}{tx.amount} {tx.symbol}
             </div>
 
             {/* time */}

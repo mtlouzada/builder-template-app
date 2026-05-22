@@ -636,7 +636,7 @@ export type TreasuryTx = {
   who: string
   addr: string
   tag: string
-  amountEth: string
+  amount: string
   symbol: string
   timestamp: number
   relativeTime: string
@@ -734,7 +734,7 @@ export async function getTreasuryPageData(): Promise<TreasuryPageData> {
           where: { dao: tokenAddressLc, owner: treasuryAddrLc } as never,
           orderBy: Token_OrderBy.MintedAt,
           orderDirection: OrderDirection.Desc,
-          first: 24,
+          first: 500,
         }),
       { tokens: [] } as Awaited<
         ReturnType<ReturnType<typeof SubgraphSDK.connect>['tokens']>
@@ -793,36 +793,47 @@ export async function getTreasuryPageData(): Promise<TreasuryPageData> {
         who: `Auction #${tokenId}`,
         addr: short(daoConfig.addresses.auction),
         tag: 'Auction settle',
-        amountEth: amountEth.toFixed(4).replace(/\.?0+$/, '') || '0',
+        amount: amountEth.toFixed(4).replace(/\.?0+$/, '') || '0',
         symbol: 'ETH',
         timestamp: Number(a.endTime),
         relativeTime: txRelativeTime(Number(a.endTime)),
       }
     })
 
-  const proposalTxs: TreasuryTx[] = (proposalsResp?.proposals ?? [])
-    .filter((p) => p.executedAt)
-    .slice(0, 6)
-    .map((p) => {
-      const values: string[] = Array.isArray(p.values) ? (p.values as string[]) : []
-      const totalWei = values.reduce((acc, v) => acc + BigInt(v || '0'), BigInt(0))
-      const amountEth = Number(formatEther(totalWei))
-      return {
-        dir: 'out' as const,
-        who: p.title ? (p.title.length > 32 ? p.title.slice(0, 30) + '…' : p.title) : `Prop #${p.proposalNumber}`,
+  // Decode per-token transfers from executed proposals
+  const knownTokens = daoConfig.treasuryTokens
+  const proposalTxs: TreasuryTx[] = []
+  for (const p of (proposalsResp?.proposals ?? []).filter((p) => p.executedAt)) {
+    const transfers = decodePropTransfers(
+      p.targets as string[],
+      p.calldatas as string[],
+      p.values as string[],
+      knownTokens
+    )
+    if (transfers.length === 0) continue
+    const propWho = p.title
+      ? p.title.length > 32
+        ? p.title.slice(0, 30) + '…'
+        : p.title
+      : `Prop #${p.proposalNumber}`
+    for (const t of transfers) {
+      proposalTxs.push({
+        dir: 'out',
+        who: propWho,
         addr: short(String(p.proposer)),
         tag: `Prop #${p.proposalNumber}`,
-        amountEth: amountEth > 0 ? amountEth.toFixed(4).replace(/\.?0+$/, '') : '0',
-        symbol: 'ETH',
+        amount: t.amount,
+        symbol: t.symbol,
         timestamp: Number(p.executedAt),
         relativeTime: txRelativeTime(Number(p.executedAt)),
         proposalNumber: p.proposalNumber,
-      }
-    })
+      })
+    }
+  }
 
   const recentTxs = [...auctionTxs, ...proposalTxs]
     .sort((a, b) => b.timestamp - a.timestamp)
-    .slice(0, 8)
+    .slice(0, 10)
 
   return {
     treasuryEth,
@@ -839,6 +850,56 @@ export async function getTreasuryPageData(): Promise<TreasuryPageData> {
     tokenHoldings,
     recentTxs,
   }
+}
+
+const ERC20_TRANSFER_SELECTOR = '0xa9059cbb'
+
+function decodePropTransfers(
+  targets: string[],
+  calldatas: string[],
+  values: string[],
+  knownTokens: Array<{ address: string; symbol: string; decimals: number }>
+): Array<{ symbol: string; amount: string }> {
+  const tokenMap = new Map(knownTokens.map((t) => [t.address.toLowerCase(), t]))
+  const bySymbol = new Map<string, number>()
+
+  const len = Math.max(targets?.length ?? 0, calldatas?.length ?? 0, values?.length ?? 0)
+  for (let i = 0; i < len; i++) {
+    const cd = calldatas?.[i] ?? '0x'
+    const target = (targets?.[i] ?? '').toLowerCase()
+    const value = values?.[i] ?? '0'
+
+    // Native ETH transfer
+    try {
+      if (BigInt(value) > 0) {
+        const eth = Number(formatEther(BigInt(value)))
+        bySymbol.set('ETH', (bySymbol.get('ETH') ?? 0) + eth)
+      }
+    } catch {}
+
+    // ERC-20 transfer(address,uint256)
+    const selector = cd.startsWith('0x') ? cd.slice(2, 10) : cd.slice(0, 8)
+    if (selector === ERC20_TRANSFER_SELECTOR.slice(2)) {
+      const token = tokenMap.get(target)
+      if (token) {
+        try {
+          const full = cd.startsWith('0x') ? cd : '0x' + cd
+          // 0x + 8 (selector) + 64 (address pad) + 64 (amount) = 138 chars
+          const amountHex = '0x' + full.slice(74, 138)
+          const human = Number(BigInt(amountHex)) / 10 ** token.decimals
+          bySymbol.set(token.symbol, (bySymbol.get(token.symbol) ?? 0) + human)
+        } catch {}
+      }
+    }
+  }
+
+  return Array.from(bySymbol.entries()).map(([symbol, total]) => ({
+    symbol,
+    amount:
+      symbol === 'ETH'
+        ? total.toFixed(4).replace(/\.?0+$/, '') || '0'
+        : total.toLocaleString('en-US', { maximumFractionDigits: 2 }),
+  }))
 }
 
 async function fetchEthUsdPrice(): Promise<number> {
