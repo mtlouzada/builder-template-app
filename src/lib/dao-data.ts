@@ -631,12 +631,25 @@ export type TreasuryNft = {
   mintedAt: number
 }
 
+export type TreasuryTx = {
+  dir: 'in' | 'out'
+  who: string
+  addr: string
+  tag: string
+  amountEth: string
+  symbol: string
+  timestamp: number
+  relativeTime: string
+  proposalNumber?: number
+}
+
 export type TreasuryPageData = {
   treasuryEth: string
   treasuryAddress: string
   totalAuctionSalesEth: string
   ownerCount: number
   totalSupply: number
+  ethUsdPrice: number
   // 12 monthly buckets, oldest → newest
   auctionRevenueByMonth: number[]
   proposalsByMonth: number[]
@@ -645,6 +658,7 @@ export type TreasuryPageData = {
   nftHoldings: TreasuryNft[]
   nftHoldingsCount: number
   tokenHoldings: TreasuryTokenHolding[]
+  recentTxs: TreasuryTx[]
 }
 
 export async function getTreasuryPageData(): Promise<TreasuryPageData> {
@@ -764,19 +778,90 @@ export async function getTreasuryPageData(): Promise<TreasuryPageData> {
   // so totalSupply - ownerCount is roughly accurate.
   const nftHoldingsCount = nftHoldings.length
 
+  const ethUsdPrice = await fetchEthUsdPrice()
+
+  // ── Recent transactions (inflows from auctions, outflows from executed proposals) ──
+  const auctionTxs: TreasuryTx[] = (historyResp?.dao?.auctions ?? [])
+    .filter((a) => a.winningBid?.amount)
+    .slice(0, 10)
+    .map((a) => {
+      const parts = String(a.id).split('-')
+      const tokenId = parts[parts.length - 1]
+      const amountEth = Number(formatEther(BigInt(String(a.winningBid!.amount))))
+      return {
+        dir: 'in' as const,
+        who: `Auction #${tokenId}`,
+        addr: short(daoConfig.addresses.auction),
+        tag: 'Auction settle',
+        amountEth: amountEth.toFixed(4).replace(/\.?0+$/, '') || '0',
+        symbol: 'ETH',
+        timestamp: Number(a.endTime),
+        relativeTime: txRelativeTime(Number(a.endTime)),
+      }
+    })
+
+  const proposalTxs: TreasuryTx[] = (proposalsResp?.proposals ?? [])
+    .filter((p) => p.executedAt)
+    .slice(0, 6)
+    .map((p) => {
+      const values: string[] = Array.isArray(p.values) ? (p.values as string[]) : []
+      const totalWei = values.reduce((acc, v) => acc + BigInt(v || '0'), BigInt(0))
+      const amountEth = Number(formatEther(totalWei))
+      return {
+        dir: 'out' as const,
+        who: p.title ? (p.title.length > 32 ? p.title.slice(0, 30) + '…' : p.title) : `Prop #${p.proposalNumber}`,
+        addr: short(String(p.proposer)),
+        tag: `Prop #${p.proposalNumber}`,
+        amountEth: amountEth > 0 ? amountEth.toFixed(4).replace(/\.?0+$/, '') : '0',
+        symbol: 'ETH',
+        timestamp: Number(p.executedAt),
+        relativeTime: txRelativeTime(Number(p.executedAt)),
+        proposalNumber: p.proposalNumber,
+      }
+    })
+
+  const recentTxs = [...auctionTxs, ...proposalTxs]
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 8)
+
   return {
     treasuryEth,
     treasuryAddress: daoConfig.addresses.treasury,
     totalAuctionSalesEth,
     ownerCount,
     totalSupply,
+    ethUsdPrice,
     auctionRevenueByMonth,
     proposalsByMonth,
     votersByProposal,
     nftHoldings,
     nftHoldingsCount,
     tokenHoldings,
+    recentTxs,
   }
+}
+
+async function fetchEthUsdPrice(): Promise<number> {
+  try {
+    const res = await fetch('https://api.coinbase.com/v2/exchange-rates?currency=ETH', {
+      next: { revalidate: 120 },
+    })
+    if (!res.ok) return 0
+    const json = await res.json()
+    const p = parseFloat(json?.data?.rates?.USD ?? '0')
+    return isNaN(p) ? 0 : p
+  } catch {
+    return 0
+  }
+}
+
+function txRelativeTime(timestamp: number): string {
+  const diff = Math.floor(Date.now() / 1000) - timestamp
+  if (diff < 60) return `${diff}s ago`
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  if (diff < 86400 * 30) return `${Math.floor(diff / 86400)} days ago`
+  return `${Math.floor(diff / (86400 * 30))} mo ago`
 }
 
 async function fetchTreasuryTokenHoldings(

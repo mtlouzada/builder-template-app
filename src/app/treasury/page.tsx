@@ -1,11 +1,10 @@
 import type { Metadata } from 'next'
 
-import { AnalyticsBarChart } from '@/components/dao/AnalyticsBarChart'
-import { KpiCard } from '@/components/dao/KpiCard'
+import { type DonutSlice, TreasuryDonut } from '@/components/dao/TreasuryDonut'
 import { TokenLogo } from '@/components/dao/TokenLogo'
 import { WalletPill } from '@/components/dao/WalletPill'
 import { daoConfig } from '@/lib/dao.config'
-import { getTreasuryPageData } from '@/lib/dao-data'
+import { type TreasuryTx, getTreasuryPageData } from '@/lib/dao-data'
 
 export const metadata: Metadata = {
   title: 'Treasury',
@@ -13,144 +12,185 @@ export const metadata: Metadata = {
 
 export const revalidate = 60
 
+// ── Token USD helpers ─────────────────────────────────────────────────────────
+
+const STABLE_SYMBOLS = new Set(['USDC', 'USDT', 'DAI', 'FRAX', 'LUSD', 'USDBC', 'USDS', 'USDGLO', 'GUSD'])
+const WETH_SYMBOLS = new Set(['WETH', 'CBETH', 'STETH', 'RETH'])
+
+function tokenUsdValue(balanceRaw: string, decimals: number, symbol: string, ethUsdPrice: number): number {
+  const sym = symbol.toUpperCase()
+  const human = Number(BigInt(balanceRaw)) / 10 ** decimals
+  if (STABLE_SYMBOLS.has(sym)) return human
+  if (WETH_SYMBOLS.has(sym)) return human * ethUsdPrice
+  return 0
+}
+
+// Per-asset slice colors: ETH uses accent, stables green, WETH grey, others orange
+const TOKEN_COLORS: Record<string, string> = {
+  ETH:  'var(--accent)',
+  WETH: '#9a9aa2',
+  CBETH: '#9a9aa2',
+  USDC: '#5fd28a',
+  USDT: '#5fd28a',
+  DAI:  '#f9a825',
+  FRAX: '#c084fc',
+}
+const FALLBACK_COLORS = ['#ffb347', '#60a5fa', '#c084fc', '#f472b6', '#34d399']
+
+function tokenColor(symbol: string, fallbackIdx: number): string {
+  return TOKEN_COLORS[symbol.toUpperCase()] ?? FALLBACK_COLORS[fallbackIdx % FALLBACK_COLORS.length]
+}
+
+function fmtUSD(n: number, dp = 0): string {
+  return '$' + n.toLocaleString('en-US', { maximumFractionDigits: dp, minimumFractionDigits: dp })
+}
+
+// ── Explorer link ─────────────────────────────────────────────────────────────
+
+const EXPLORER: Record<number, { name: string; base: string }> = {
+  1:       { name: 'Etherscan',  base: 'https://etherscan.io' },
+  10:      { name: 'Optimistic', base: 'https://optimistic.etherscan.io' },
+  8453:    { name: 'Basescan',   base: 'https://basescan.org' },
+  7777777: { name: 'Zorascan',  base: 'https://explorer.zora.energy' },
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default async function TreasuryPage() {
   const data = await getTreasuryPageData()
+  const { ethUsdPrice } = data
 
-  const treasuryDisplay = trimDecimals(data.treasuryEth, 4)
-  const salesDisplay = trimDecimals(data.totalAuctionSalesEth, 4)
-  const monthLabels = lastTwelveMonthLabels()
+  const ethBal   = parseFloat(data.treasuryEth)
+  const ethUsd   = ethBal * ethUsdPrice
+
+  const tokenAssets = data.tokenHoldings.map((t, i) => {
+    const usd   = tokenUsdValue(t.balanceRaw, t.decimals, t.symbol, ethUsdPrice)
+    const color = tokenColor(t.symbol, i)
+    return { ...t, usd, color }
+  })
+
+  const totalUsd = ethUsd + tokenAssets.reduce((s, t) => s + t.usd, 0)
+
+  // Donut slices (only include assets with known USD value)
+  const slices: DonutSlice[] = [
+    ...(ethUsd > 0 ? [{ name: 'ETH', color: 'var(--accent)', value: ethUsd }] : []),
+    ...tokenAssets.filter((t) => t.usd > 0).map((t) => ({
+      name: t.symbol,
+      color: t.color,
+      value: t.usd,
+    })),
+  ]
+
+  // Show donut fallback if no USD prices resolved
+  const hasUsd = totalUsd > 0
+
+  const explorer = EXPLORER[daoConfig.chainId] ?? { name: 'Explorer', base: 'https://basescan.org' }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-display text-[clamp(36px,5vw,56px)] font-extrabold leading-[1.04] tracking-[-0.025em]">
-            Treasury
-          </h1>
-          <p className="mt-1 text-muted-fg">
-            Overview of the {daoConfig.name} treasury holdings and financial position.
-          </p>
+    <div className="flex flex-col gap-7">
+      {/* ── Header ── */}
+      <div>
+        <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-wider text-accent">
+          Allocation · live
+        </p>
+        <h1 className="font-display text-[clamp(40px,5vw,64px)] font-extrabold leading-[1.02] tracking-[-0.025em]">
+          Treasury
+        </h1>
+        <p className="mt-2 max-w-xl text-[15.5px] text-muted-fg">
+          {hasUsd
+            ? `Composition of ${fmtUSD(totalUsd)} across ${daoConfig.name}'s ETH, stables, and in-treasury collection.`
+            : `Holdings and financial position of the ${daoConfig.name} treasury.`}
+        </p>
+      </div>
+
+      {/* ── Two-column grid ── */}
+      <div className="grid grid-cols-1 items-start gap-7 lg:grid-cols-[380px_1fr]">
+
+        {/* Donut card */}
+        <div className="rounded-[14px] border border-border bg-surface px-6 py-7 text-center">
+          {hasUsd ? (
+            <TreasuryDonut slices={slices} totalUsd={totalUsd} />
+          ) : (
+            <div className="py-10 text-sm text-muted-fg">
+              USD prices unavailable — showing balances only.
+            </div>
+          )}
         </div>
-        <WalletPill
-          address={data.treasuryAddress}
-          link={false}
-          showCopy
-          showExplorer
-          chainId={daoConfig.chainId}
-          size="sm"
-        />
-      </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <KpiCard value={`${treasuryDisplay} ETH`} label="Treasury balance" />
-        <KpiCard value={`${salesDisplay} ETH`} label="Total auction sales" />
-        <KpiCard value={data.ownerCount.toLocaleString('en-US')} label="Owners" />
-      </div>
+        {/* Right column: asset rows + tx card */}
+        <div className="flex flex-col gap-4">
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <ChartCard title="Auction revenue" sub="ETH per month">
-          <AnalyticsBarChart
-            data={zip(monthLabels, data.auctionRevenueByMonth)}
-            valueSuffix="ETH"
-            precision={3}
-          />
-        </ChartCard>
-        <ChartCard title="Proposal activity" sub="proposals / month">
-          <AnalyticsBarChart
-            data={zip(monthLabels, data.proposalsByMonth)}
-            valueSuffix="proposals"
-            precision={0}
-          />
-        </ChartCard>
-        <ChartCard
-          title="Voter activity"
-          sub={`votes per recent prop (last ${data.votersByProposal.length})`}
-        >
-          <AnalyticsBarChart
-            data={(data.votersByProposal.length > 0
-              ? data.votersByProposal
-              : new Array(12).fill(0)
-            ).map((v, i) => ({ label: `#${i + 1}`, value: v }))}
-            valueSuffix="votes"
-            precision={0}
-          />
-        </ChartCard>
-      </div>
+          {/* Asset rows */}
+          <div className="flex flex-col gap-3">
+            {/* ETH row */}
+            <AssetRow
+              logo={<TokenLogo symbol="ETH" chainId={daoConfig.chainId} size={36} />}
+              name="Ether"
+              sub="Native asset"
+              color="var(--accent)"
+              bal={`${trimDecimals(data.treasuryEth, 4)} ETH`}
+              usd={ethUsd}
+              pct={totalUsd > 0 ? ethUsd / totalUsd : 0}
+              showUsd={hasUsd}
+            />
 
-      <section className="rounded-xl border border-border bg-surface px-6 py-[22px]">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-xl font-bold tracking-tight">Token holdings</h2>
-        </div>
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr>
-              <Th>Asset</Th>
-              <Th>Balance</Th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="hover:bg-surface-2">
-              <Td>
-                <div className="flex items-center gap-2.5">
-                  <TokenLogo symbol="ETH" chainId={daoConfig.chainId} />
-                  Ether
-                </div>
-              </Td>
-              <Td>
-                <strong className="font-semibold">{treasuryDisplay} ETH</strong>
-              </Td>
-            </tr>
-            {data.tokenHoldings.map((t) => (
-              <tr key={t.address} className="hover:bg-surface-2">
-                <Td>
-                  <div className="flex items-center gap-2.5">
-                    <TokenLogo address={t.address} symbol={t.symbol} chainId={daoConfig.chainId} />
-                    {t.symbol}
-                  </div>
-                </Td>
-                <Td>
-                  <strong className="font-semibold">
-                    {t.balance} {t.symbol}
-                  </strong>
-                </Td>
-              </tr>
+            {/* ERC-20 rows */}
+            {tokenAssets.map((t) => (
+              <AssetRow
+                key={t.address}
+                logo={<TokenLogo address={t.address} symbol={t.symbol} chainId={daoConfig.chainId} size={36} />}
+                name={t.symbol}
+                sub={STABLE_SYMBOLS.has(t.symbol.toUpperCase()) ? 'Stable reserve' : WETH_SYMBOLS.has(t.symbol.toUpperCase()) ? 'Wrapped' : 'ERC-20'}
+                color={t.color}
+                bal={`${t.balance} ${t.symbol}`}
+                usd={t.usd}
+                pct={totalUsd > 0 ? t.usd / totalUsd : 0}
+                showUsd={hasUsd}
+              />
             ))}
-          </tbody>
-        </table>
-        {data.tokenHoldings.length === 0 && (
-          <div className="mt-3 text-[12.5px] text-muted-fg">
-            Add ERC-20 contracts to track in{' '}
-            <code className="rounded bg-surface-2 px-1 py-0.5 font-mono text-[11.5px]">
-              daoConfig.treasuryTokens
-            </code>
-            . See{' '}
-            <code className="rounded bg-surface-2 px-1 py-0.5 font-mono text-[11.5px]">
-              src/lib/treasury-tokens.ts
-            </code>{' '}
-            for opt-in defaults.
-          </div>
-        )}
-      </section>
 
-      <section className="rounded-xl border border-border bg-surface px-6 py-[22px]">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-xl font-bold tracking-tight">NFT holdings</h2>
-          <span className="text-[12.5px] text-muted-fg">
-            {data.nftHoldingsCount.toLocaleString('en-US')} in treasury
-            {data.nftHoldingsCount === 24 && '+'}
-          </span>
-        </div>
-        {data.nftHoldings.length === 0 ? (
-          <div className="rounded-md border border-dashed border-border bg-surface-2 px-4 py-5 text-sm text-muted-fg">
-            Treasury holds no DAO tokens currently.
+            {/* NFT row (no USD without floor price API) */}
+            {data.nftHoldingsCount > 0 && (
+              <AssetRow
+                logo={
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-3 text-sm font-bold">
+                    ◉
+                  </span>
+                }
+                name="NFTs"
+                sub={`${data.nftHoldingsCount} in treasury`}
+                color="#ffb347"
+                bal={`${data.nftHoldingsCount} ${daoConfig.name}`}
+                usd={0}
+                pct={0}
+                showUsd={false}
+              />
+            )}
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {data.nftHoldings.map((nft) => (
+
+          {/* Recent transactions */}
+          <TxCard txs={data.recentTxs} explorer={explorer} treasuryAddress={data.treasuryAddress} />
+        </div>
+      </div>
+
+      {/* ── NFT holdings ── */}
+      {data.nftHoldings.length > 0 && (
+        <section className="rounded-[14px] border border-border bg-surface px-6 py-[22px]">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-base font-bold">
+              NFT holdings · {data.nftHoldingsCount} in treasury
+              {data.nftHoldingsCount === 24 && '+'}
+            </h2>
+            <span className="text-[12.5px] text-muted-fg">
+              {data.nftHoldingsCount} {daoConfig.name} tokens
+            </span>
+          </div>
+          <div className="mt-4 grid grid-cols-4 gap-2.5 sm:grid-cols-6 lg:grid-cols-8">
+            {data.nftHoldings.slice(0, 7).map((nft) => (
               <a
                 key={nft.tokenId}
                 href={`/auction/${nft.tokenId}`}
-                className="relative aspect-square overflow-hidden rounded-md border border-border bg-surface-2 transition-[transform,border-color] hover:-translate-y-px hover:border-border-strong"
+                className="aspect-square overflow-hidden rounded-[10px] border border-border bg-surface-2 transition-[transform,border-color] hover:-translate-y-px hover:border-border-strong"
               >
                 {nft.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -161,55 +201,150 @@ export default async function TreasuryPage() {
                     className="h-full w-full object-cover"
                   />
                 ) : null}
-                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-bg/85 px-2.5 py-1.5 text-xs font-semibold backdrop-blur-md">
-                  <span>#{nft.tokenId}</span>
-                  <span className="text-muted-fg">
-                    {new Date(nft.mintedAt * 1000).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: '2-digit',
-                      year: '2-digit',
-                    })}
-                  </span>
-                </div>
               </a>
             ))}
+            {data.nftHoldingsCount > 7 && (
+              <div className="aspect-square flex items-center justify-center rounded-[10px] border border-dashed border-border-strong bg-surface-2 font-semibold text-muted-fg">
+                +{data.nftHoldingsCount - 7}
+              </div>
+            )}
           </div>
-        )}
-      </section>
+        </section>
+      )}
     </div>
   )
 }
 
-function Th({ children }: { children?: React.ReactNode }) {
-  return (
-    <th className="border-b border-border px-3.5 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-fg">
-      {children}
-    </th>
-  )
-}
+// ── Sub-components ────────────────────────────────────────────────────────────
 
-function Td({ children }: { children: React.ReactNode }) {
-  return (
-    <td className="border-b border-border px-3.5 py-2.5 last:border-b-0">{children}</td>
-  )
-}
-
-function ChartCard({
-  title,
-  sub,
-  children,
+function AssetRow({
+  logo, name, sub, color, bal, usd, pct, showUsd,
 }: {
-  title: string
+  logo: React.ReactNode
+  name: string
   sub: string
-  children: React.ReactNode
+  color: string
+  bal: string
+  usd: number
+  pct: number
+  showUsd: boolean
 }) {
   return (
-    <div className="rounded-md border border-border bg-surface p-4">
-      <div className="mb-2 flex items-baseline justify-between">
-        <div className="text-sm font-semibold">{title}</div>
-        <div className="text-[12.5px] text-muted-fg">{sub}</div>
+    <div
+      className="grid items-center gap-4 rounded-xl border border-border bg-surface px-[18px] py-3.5 hover:bg-surface-2"
+      style={{ gridTemplateColumns: '40px 1fr 1fr' + (showUsd ? ' 1fr 1fr' : '') }}
+    >
+      {/* icon */}
+      <div>{logo}</div>
+
+      {/* name */}
+      <div>
+        <div className="font-semibold">{name}</div>
+        <div className="mt-0.5 text-xs text-muted-fg">{sub}</div>
       </div>
-      {children}
+
+      {/* balance */}
+      <div className="text-right font-mono text-[13.5px] tabular-nums">{bal}</div>
+
+      {/* USD + bar — only when price data available */}
+      {showUsd && (
+        <>
+          <div className="text-right font-mono text-[13.5px] tabular-nums text-muted-fg">
+            {fmtUSD(usd)}
+          </div>
+          <div>
+            <div className="h-1 overflow-hidden rounded-full bg-surface-3">
+              <div
+                className="h-full rounded-full transition-[width]"
+                style={{ width: `${pct * 100}%`, background: color }}
+              />
+            </div>
+            <div className="mt-1 text-right text-xs text-muted-fg tabular-nums">
+              {(pct * 100).toFixed(1)}%
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function TxCard({
+  txs,
+  explorer,
+  treasuryAddress,
+}: {
+  txs: TreasuryTx[]
+  explorer: { name: string; base: string }
+  treasuryAddress: string
+}) {
+  return (
+    <div className="rounded-[14px] border border-border bg-surface px-6 py-[22px]">
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        <h3 className="text-base font-bold">Recent transactions</h3>
+        <span className="text-[12.5px] text-muted-fg">From treasury safe · last 30 days</span>
+      </div>
+
+      <div className="flex flex-col">
+        {txs.length === 0 && (
+          <div className="py-8 text-center text-sm text-muted-fg">
+            No transactions in the last 30 days.
+          </div>
+        )}
+        {txs.map((tx, i) => (
+          <div
+            key={i}
+            className="grid items-center gap-4 border-b border-border py-3 text-[13.5px] last:border-0"
+            style={{ gridTemplateColumns: '28px 1fr 1.2fr 1fr auto' }}
+          >
+            {/* direction badge */}
+            <span
+              className="flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold"
+              style={{
+                background: tx.dir === 'in'
+                  ? 'color-mix(in oklab, #5fd28a 22%, transparent)'
+                  : 'color-mix(in oklab, #f06464 22%, transparent)',
+                color: tx.dir === 'in' ? '#5fd28a' : '#f06464',
+              }}
+            >
+              {tx.dir === 'in' ? '↓' : '↑'}
+            </span>
+
+            {/* who */}
+            <div className="min-w-0">
+              <div className="truncate font-semibold">{tx.who}</div>
+              <div className="font-mono text-[11.5px] text-muted-fg">{tx.addr}</div>
+            </div>
+
+            {/* tag */}
+            <div className="font-mono text-[11.5px] text-muted-fg">{tx.tag}</div>
+
+            {/* amount */}
+            <div
+              className="text-right font-mono font-semibold tabular-nums"
+              style={{ color: tx.dir === 'in' ? '#5fd28a' : '#f06464' }}
+            >
+              {tx.dir === 'in' ? '+' : '−'}{tx.amountEth} {tx.symbol}
+            </div>
+
+            {/* time */}
+            <div className="text-right font-mono text-[11.5px] text-muted-fg">
+              {tx.relativeTime}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3.5 flex justify-end">
+        <a
+          href={`${explorer.base}/address/${treasuryAddress}`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-2 px-3 py-1.5 font-mono text-[12px] hover:bg-surface-3"
+        >
+          View all on {explorer.name} ↗
+        </a>
+      </div>
     </div>
   )
 }
@@ -220,26 +355,7 @@ function trimDecimals(value: string, max: number): string {
   return `${intPart}.${decPart.slice(0, max).replace(/0+$/, '') || '0'}`
 }
 
-function zip(
-  labels: string[],
-  values: number[]
-): Array<{ label: string; value: number }> {
-  return labels.map((label, i) => ({ label, value: values[i] ?? 0 }))
-}
-
-function lastTwelveMonthLabels(): string[] {
-  const out: string[] = []
-  const d = new Date()
-  for (let i = 11; i >= 0; i--) {
-    const dd = new Date(d.getFullYear(), d.getMonth() - i, 1)
-    out.push(['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'][dd.getMonth()])
-  }
-  return out
-}
-
 function resolveIpfs(uri: string): string {
-  if (uri.startsWith('ipfs://')) {
-    return `https://gateway.pinata.cloud/ipfs/${uri.slice(7)}`
-  }
+  if (uri.startsWith('ipfs://')) return `https://gateway.pinata.cloud/ipfs/${uri.slice(7)}`
   return uri
 }
