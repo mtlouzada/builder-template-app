@@ -291,8 +291,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     historyResp?.dao?.auctions ?? []
   )
 
-  // Build the activity feed from real events: bids placed in the last
-  // 30 days + recent proposals. Merged & sorted by actual timestamp.
+  // Build the activity feed from real events: latest bids + latest
+  // proposals. Merged & sorted by actual timestamp.
   const recentActivity = await buildRecentActivity(proposalsResp.proposals)
 
   return {
@@ -310,18 +310,17 @@ export async function getDashboardData(): Promise<DashboardData> {
 async function buildRecentActivity(
   proposals: Proposal[]
 ): Promise<DashboardActivityItem[]> {
-  const thirtyDaysAgo = Math.floor(Date.now() / 1000) - 60 * 60 * 24 * 30
-
   // feedEvents carries real per-bid timestamps; getBids does not.
+  // No time filter — quieter DAOs would otherwise show an empty Bids tab.
+  // Sized to roughly match the proposals column height, not a full feed.
   const bidsResp = await safeFetch(
     'dashboard.activityBids',
     () =>
       SubgraphSDK.connect(chainId).feedEvents({
-        first: 50,
+        first: 8,
         where: {
           dao: tokenAddressLc,
           type: FeedEventType.AuctionBidPlaced,
-          timestamp_gte: BigInt(thirtyDaysAgo).toString() as unknown as bigint,
         },
       }),
     { feedEvents: [] } as Awaited<
@@ -348,20 +347,20 @@ async function buildRecentActivity(
       }
     })
 
-  const propEvents = proposals
-    .filter((p) => Number(p.timeCreated) >= thirtyDaysAgo)
-    .map((p) => ({
-      type: 'prop' as const,
-      who: short(p.proposer),
-      what: `created proposal #${p.proposalNumber}`,
-      timeAgo: relativeTimeAgo(Number(p.timeCreated) * 1000),
-      href: `/proposals/${Number(p.proposalNumber)}`,
-      _ts: Number(p.timeCreated),
-    }))
+  const propEvents = proposals.slice(0, 6).map((p) => ({
+    type: 'prop' as const,
+    who: short(p.proposer),
+    what: `created proposal #${p.proposalNumber}`,
+    timeAgo: relativeTimeAgo(Number(p.timeCreated) * 1000),
+    href: `/proposals/${Number(p.proposalNumber)}`,
+    _ts: Number(p.timeCreated),
+  }))
 
+  // 6 items keeps the Activity card's natural height ≈ the 5-row
+  // Recent Proposals card; grid stretching handles shorter Bids/Props tabs.
   return [...bidEvents, ...propEvents]
     .sort((a, b) => b._ts - a._ts)
-    .slice(0, 15)
+    .slice(0, 6)
     .map(({ _ts: _, ...rest }) => rest)
 }
 
